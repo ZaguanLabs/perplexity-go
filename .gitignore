@@ -17,6 +17,22 @@ coverage.*
 *.coverprofile
 profile.cov
 
+# Compiled binaries (exclude ALL binaries)
+/bin/
+/build/
+main
+chat
+search
+streaming
+basic
+**/main
+**/chat
+**/search
+**/streaming
+**/basic
+# Exclude any executable files
+*[!.go][!.md][!.txt]
+
 # Dependency directories (remove the comment below to include it)
 # vendor/
 
