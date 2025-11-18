@@ -5,7 +5,7 @@
 
 The **unofficial** Go client library for the [Perplexity API](https://docs.perplexity.ai/).
 
-> **⚠️ Work in Progress**: This SDK is currently under active development. The API may change before the v1.0.0 release.
+> **Version 0.1.0** - Initial release with full chat completions, streaming, and search support.
 
 ## Features
 
@@ -15,7 +15,7 @@ The **unofficial** Go client library for the [Perplexity API](https://docs.perpl
 - ✅ **Zero dependencies**: Uses only the Go standard library
 - ✅ **Chat completions**: Full support for chat API with 60+ parameters
 - ✅ **Streaming support**: Server-Sent Events (SSE) for real-time responses
-- 🚧 **Search API**: Web search capabilities (coming in Phase 5)
+- ✅ **Search API**: Web search with filtering and multiple query support
 
 ## Installation
 
@@ -34,6 +34,9 @@ import (
     "log"
 
     "github.com/perplexityai/perplexity-go/perplexity"
+    "github.com/perplexityai/perplexity-go/perplexity/chat"
+    "github.com/perplexityai/perplexity-go/perplexity/search"
+    "github.com/perplexityai/perplexity-go/perplexity/types"
 )
 
 func main() {
@@ -57,6 +60,20 @@ func main() {
 
     // Print the response
     fmt.Println(result.Choices[0].Message.Content)
+
+    // Perform a web search
+    searchResult, err := client.Search.Create(context.Background(), &search.SearchParams{
+        Query:      "latest AI developments",
+        MaxResults: types.Int(5),
+    })
+    if err != nil {
+        log.Fatal(err)
+    }
+
+    // Print search results
+    for _, item := range searchResult.Results {
+        fmt.Printf("%s: %s\n", item.Title, item.URL)
+    }
 }
 ```
 
@@ -174,9 +191,16 @@ Helper functions:
 - [x] Comprehensive streaming tests
 - [x] Streaming examples
 
-### Phase 5: Search API 📋 (Planned)
-- [ ] Search service
-- [ ] Search methods
+### Phase 5: Search API ✅ (Completed)
+- [x] Search service implementation
+- [x] SearchParams with all filter options
+- [x] Create() method for web search
+- [x] Support for single and multiple queries
+- [x] Search mode support (web, academic, SEC)
+- [x] Domain and language filtering
+- [x] Recency filtering
+- [x] Comprehensive tests
+- [x] Search examples
 
 ## Requirements
 

@@ -8,6 +8,7 @@ import (
 
 	"github.com/perplexityai/perplexity-go/perplexity/chat"
 	internalhttp "github.com/perplexityai/perplexity-go/perplexity/internal/http"
+	"github.com/perplexityai/perplexity-go/perplexity/search"
 )
 
 // Client is the main Perplexity API client.
@@ -20,8 +21,8 @@ type Client struct {
 	userAgent      string
 
 	// Services
-	Chat *chat.Service
-	// Search *search.Service  // Will be added in Phase 5
+	Chat   *chat.Service
+	Search *search.Service
 }
 
 // NewClient creates a new Perplexity API client.
@@ -66,7 +67,7 @@ func NewClient(apiKey string, opts ...ClientOption) (*Client, error) {
 
 	// Initialize services
 	client.Chat = chat.NewService(httpClientWrapper)
-	// client.Search = search.NewService(httpClientWrapper)  // Phase 5
+	client.Search = search.NewService(httpClientWrapper)
 
 	return client, nil
 }
