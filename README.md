@@ -13,9 +13,9 @@ The official Go client library for the [Perplexity API](https://docs.perplexity.
 - ✅ **Context-aware**: All methods accept `context.Context` for cancellation and timeouts
 - ✅ **Retry logic**: Automatic exponential backoff for transient errors
 - ✅ **Zero dependencies**: Uses only the Go standard library
-- 🚧 **Streaming support**: Server-Sent Events (SSE) for real-time responses (coming soon)
-- 🚧 **Chat completions**: Full support for chat API (coming soon)
-- 🚧 **Search API**: Web search capabilities (coming soon)
+- ✅ **Chat completions**: Full support for chat API with 60+ parameters
+- 🚧 **Streaming support**: Server-Sent Events (SSE) for real-time responses (coming in Phase 4)
+- 🚧 **Search API**: Web search capabilities (coming in Phase 5)
 
 ## Installation
 
@@ -43,14 +43,20 @@ func main() {
         log.Fatal(err)
     }
 
-    // API methods will be available in upcoming releases
-    // Example (coming soon):
-    // resp, err := client.Chat.Completions.Create(ctx, &chat.CompletionParams{
-    //     Model: "sonar",
-    //     Messages: []types.ChatMessage{
-    //         {Role: types.RoleUser, Content: types.TextContent("Hello!")},
-    //     },
-    // })
+    // Create a chat completion
+    result, err := client.Chat.Create(context.Background(), &chat.CompletionParams{
+        Model: "sonar",
+        Messages: []types.ChatMessage{
+            types.UserMessage("What is the capital of France?"),
+        },
+        MaxTokens: types.Int(100),
+    })
+    if err != nil {
+        log.Fatal(err)
+    }
+
+    // Print the response
+    fmt.Println(result.Choices[0].Message.Content)
 }
 ```
 
@@ -151,10 +157,13 @@ Helper functions:
 - [x] Helper functions
 - [x] Comprehensive tests (20+ test cases)
 
-### Phase 3: Chat Completions 📋 (Next)
-- [ ] Chat service
-- [ ] Create method
-- [ ] Parameter validation
+### Phase 3: Chat Completions ✅ (Completed)
+- [x] Chat service implementation
+- [x] CompletionParams with 60+ parameters
+- [x] Create() method for non-streaming completions
+- [x] Parameter validation
+- [x] Comprehensive tests
+- [x] Working examples
 
 ### Phase 4: Streaming 📋 (Planned)
 - [ ] SSE decoder
