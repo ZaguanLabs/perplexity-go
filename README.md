@@ -20,7 +20,7 @@ The official Go client library for the [Perplexity API](https://docs.perplexity.
 ## Installation
 
 ```bash
-go get github.com/perplexityai/perplexity-go
+go get github.com/perplexityai/perplexity-go/perplexity
 ```
 
 ## Quick Start
@@ -33,7 +33,7 @@ import (
     "fmt"
     "log"
 
-    "github.com/perplexityai/perplexity-go"
+    "github.com/perplexityai/perplexity-go/perplexity"
 )
 
 func main() {
