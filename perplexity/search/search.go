@@ -5,8 +5,8 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/perplexityai/perplexity-go/perplexity/internal/http"
-	"github.com/perplexityai/perplexity-go/perplexity/types"
+	"github.com/ZaguanLabs/perplexity-go/perplexity/internal/http"
+	"github.com/ZaguanLabs/perplexity-go/perplexity/types"
 )
 
 // Service provides access to search APIs.

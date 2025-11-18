@@ -7,8 +7,8 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	internalhttp "github.com/perplexityai/perplexity-go/perplexity/internal/http"
-	"github.com/perplexityai/perplexity-go/perplexity/types"
+	internalhttp "github.com/ZaguanLabs/perplexity-go/perplexity/internal/http"
+	"github.com/ZaguanLabs/perplexity-go/perplexity/types"
 )
 
 func TestService_Create(t *testing.T) {

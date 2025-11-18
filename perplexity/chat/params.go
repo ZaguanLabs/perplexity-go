@@ -1,7 +1,7 @@
 package chat
 
 import (
-	"github.com/perplexityai/perplexity-go/perplexity/types"
+	"github.com/ZaguanLabs/perplexity-go/perplexity/types"
 )
 
 // CompletionParams contains parameters for creating a chat completion.

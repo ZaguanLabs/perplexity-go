@@ -1,4 +1,4 @@
-module github.com/perplexityai/perplexity-go
+module github.com/ZaguanLabs/perplexity-go
 
 go 1.21
 

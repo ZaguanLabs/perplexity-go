@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/perplexityai/perplexity-go/perplexity"
-	"github.com/perplexityai/perplexity-go/perplexity/types"
+	"github.com/ZaguanLabs/perplexity-go/perplexity"
+	"github.com/ZaguanLabs/perplexity-go/perplexity/types"
 )
 
 func main() {

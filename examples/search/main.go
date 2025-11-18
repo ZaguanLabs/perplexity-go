@@ -6,10 +6,10 @@ import (
 	"log"
 	"os"
 
-	"github.com/perplexityai/perplexity-go/perplexity"
-	"github.com/perplexityai/perplexity-go/perplexity/chat"
-	"github.com/perplexityai/perplexity-go/perplexity/search"
-	"github.com/perplexityai/perplexity-go/perplexity/types"
+	"github.com/ZaguanLabs/perplexity-go/perplexity"
+	"github.com/ZaguanLabs/perplexity-go/perplexity/chat"
+	"github.com/ZaguanLabs/perplexity-go/perplexity/search"
+	"github.com/ZaguanLabs/perplexity-go/perplexity/types"
 )
 
 func main() {

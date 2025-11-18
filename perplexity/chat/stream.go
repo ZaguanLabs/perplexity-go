@@ -7,8 +7,8 @@ import (
 	"io"
 	"net/http"
 
-	"github.com/perplexityai/perplexity-go/perplexity/internal/sse"
-	"github.com/perplexityai/perplexity-go/perplexity/types"
+	"github.com/ZaguanLabs/perplexity-go/perplexity/internal/sse"
+	"github.com/ZaguanLabs/perplexity-go/perplexity/types"
 )
 
 // Stream represents a stream of chat completion chunks.

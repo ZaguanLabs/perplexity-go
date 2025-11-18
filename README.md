@@ -1,26 +1,43 @@
-# Perplexity Go SDK
+# Perplexity Go SDK (Unofficial)
 
-[![Go Reference](https://pkg.go.dev/badge/github.com/perplexityai/perplexity-go.svg)](https://pkg.go.dev/github.com/perplexityai/perplexity-go)
-[![Go Report Card](https://goreportcard.com/badge/github.com/perplexityai/perplexity-go)](https://goreportcard.com/report/github.com/perplexityai/perplexity-go)
+[![Go Reference](https://pkg.go.dev/badge/github.com/ZaguanLabs/perplexity-go.svg)](https://pkg.go.dev/github.com/ZaguanLabs/perplexity-go)
+[![Go Report Card](https://goreportcard.com/badge/github.com/ZaguanLabs/perplexity-go)](https://goreportcard.com/report/github.com/ZaguanLabs/perplexity-go)
+[![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 
-The **unofficial** Go client library for the [Perplexity API](https://docs.perplexity.ai/).
+An **unofficial**, community-maintained Go client library for the [Perplexity API](https://docs.perplexity.ai/). This SDK provides idiomatic Go interfaces for chat completions, streaming responses, and web search.
 
-> **Version 0.1.0** - Initial release with full chat completions, streaming, and search support.
+> ⚠️ **Disclaimer**: This is an unofficial SDK and is not affiliated with, endorsed by, or supported by Perplexity AI. For official support, please refer to the [Perplexity API documentation](https://docs.perplexity.ai/).
+
+## Why Use This SDK?
+
+- 🚀 **Production Ready**: Comprehensive error handling, retries, and timeouts
+- 📦 **Zero Dependencies**: Uses only the Go standard library
+- 🔒 **Type Safe**: Full type definitions with compile-time safety
+- ⚡ **Streaming Support**: Real-time responses with Server-Sent Events
+- 🔍 **Complete API Coverage**: Chat, streaming, and search endpoints
+- 📚 **Well Documented**: Extensive examples and GoDoc comments
+- ✅ **Thoroughly Tested**: 70%+ test coverage with 50+ test cases
 
 ## Features
 
-- ✅ **Type-safe**: Full type definitions for all request and response types
-- ✅ **Context-aware**: All methods accept `context.Context` for cancellation and timeouts
-- ✅ **Retry logic**: Automatic exponential backoff for transient errors
-- ✅ **Zero dependencies**: Uses only the Go standard library
-- ✅ **Chat completions**: Full support for chat API with 60+ parameters
-- ✅ **Streaming support**: Server-Sent Events (SSE) for real-time responses
-- ✅ **Search API**: Web search with filtering and multiple query support
+### Core Capabilities
+- **Chat Completions**: Full support for Perplexity's chat API with 60+ parameters
+- **Streaming Responses**: Real-time streaming with Server-Sent Events (SSE)
+- **Web Search**: Advanced search with filtering, multiple queries, and specialized modes
+- **Tool Calling**: Function calling and tool integration
+- **Reasoning Traces**: Access to model reasoning steps
+
+### Developer Experience
+- **Context-Aware**: All methods accept `context.Context` for cancellation and timeouts
+- **Automatic Retries**: Exponential backoff for transient errors
+- **Type Safety**: Comprehensive type definitions with generics
+- **Error Handling**: Detailed error types for all API responses
+- **Flexible Configuration**: Functional options pattern for client setup
 
 ## Installation
 
 ```bash
-go get github.com/perplexityai/perplexity-go/perplexity
+go get github.com/ZaguanLabs/perplexity-go/perplexity
 ```
 
 ## Quick Start
@@ -33,10 +50,10 @@ import (
     "fmt"
     "log"
 
-    "github.com/perplexityai/perplexity-go/perplexity"
-    "github.com/perplexityai/perplexity-go/perplexity/chat"
-    "github.com/perplexityai/perplexity-go/perplexity/search"
-    "github.com/perplexityai/perplexity-go/perplexity/types"
+    "github.com/ZaguanLabs/perplexity-go/perplexity"
+    "github.com/ZaguanLabs/perplexity-go/perplexity/chat"
+    "github.com/ZaguanLabs/perplexity-go/perplexity/search"
+    "github.com/ZaguanLabs/perplexity-go/perplexity/types"
 )
 
 func main() {
@@ -155,67 +172,37 @@ Helper functions:
 - `IsAuthenticationError(err error) bool` - Check for auth errors
 - `IsTimeoutError(err error) bool` - Check for timeout errors
 
-## Development Status
-
-### Phase 1: Foundation ✅ (Completed)
-- [x] Project setup
-- [x] Client configuration
-- [x] Error types
-- [x] HTTP client wrapper
-- [x] Retry logic
-- [x] Unit tests
-
-### Phase 2: Type System ✅ (Completed)
-- [x] Core types (ChatMessage, Choice, UsageInfo)
-- [x] Stream types (StreamChunk)
-- [x] Search types (SearchResult, SearchResponse)
-- [x] Tool types (Tool, ToolCall)
-- [x] Reasoning types (ReasoningStep)
-- [x] Helper functions
-- [x] Comprehensive tests (20+ test cases)
-
-### Phase 3: Chat Completions ✅ (Completed)
-- [x] Chat service implementation
-- [x] CompletionParams with 60+ parameters
-- [x] Create() method for non-streaming completions
-- [x] Parameter validation
-- [x] Comprehensive tests
-- [x] Working examples
-
-### Phase 4: Streaming ✅ (Completed)
-- [x] SSE (Server-Sent Events) decoder
-- [x] Stream type with Next() and Iter() methods
-- [x] CreateStream() method
-- [x] Context cancellation support
-- [x] Error event handling
-- [x] Comprehensive streaming tests
-- [x] Streaming examples
-
-### Phase 5: Search API ✅ (Completed)
-- [x] Search service implementation
-- [x] SearchParams with all filter options
-- [x] Create() method for web search
-- [x] Support for single and multiple queries
-- [x] Search mode support (web, academic, SEC)
-- [x] Domain and language filtering
-- [x] Recency filtering
-- [x] Comprehensive tests
-- [x] Search examples
-
 ## Requirements
 
 - Go 1.21 or higher
+- A Perplexity API key ([get one here](https://www.perplexity.ai/settings/api))
 
-## Contributing
+## Project Resources
 
-Contributions are welcome! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for details.
+- 📖 [CHANGELOG.md](CHANGELOG.md) - Version history and release notes
+- 🛠️ [DEVELOPMENT.md](docs/DEVELOPMENT.md) - Development status and roadmap
+- 🤝 [CONTRIBUTING.md](CONTRIBUTING.md) - Contribution guidelines
+- 📄 [LICENSE](LICENSE) - Apache 2.0 License
+
+## Related Links
+
+- [Perplexity API Documentation](https://docs.perplexity.ai/)
+- [Official Python SDK](https://github.com/perplexityai/perplexity-py)
+- [Issue Tracker](https://github.com/ZaguanLabs/perplexity-go/issues)
+
+## Support
+
+This is an unofficial, community-maintained project. For issues with this SDK:
+- 🐛 [Report bugs](https://github.com/ZaguanLabs/perplexity-go/issues)
+- 💡 [Request features](https://github.com/ZaguanLabs/perplexity-go/issues)
+- 🤝 [Contribute](CONTRIBUTING.md)
+
+For Perplexity API support, please contact [Perplexity AI](https://www.perplexity.ai/) directly.
 
 ## License
 
 Apache 2.0 - See [LICENSE](LICENSE) for details.
 
-## Links
+## Acknowledgments
 
-- [API Documentation](https://docs.perplexity.ai/)
-- [Python SDK](https://github.com/perplexityai/perplexity-py)
-- [Issue Tracker](https://github.com/perplexityai/perplexity-go/issues)
+This SDK was built with reference to the official [Python SDK](https://github.com/perplexityai/perplexity-py) to ensure API compatibility and feature parity.

@@ -1,7 +1,7 @@
 package search
 
 import (
-	"github.com/perplexityai/perplexity-go/perplexity/chat"
+	"github.com/ZaguanLabs/perplexity-go/perplexity/chat"
 )
 
 // SearchParams contains parameters for creating a search request.

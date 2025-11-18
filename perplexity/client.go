@@ -6,9 +6,9 @@ import (
 	"net/http"
 	"os"
 
-	"github.com/perplexityai/perplexity-go/perplexity/chat"
-	internalhttp "github.com/perplexityai/perplexity-go/perplexity/internal/http"
-	"github.com/perplexityai/perplexity-go/perplexity/search"
+	"github.com/ZaguanLabs/perplexity-go/perplexity/chat"
+	internalhttp "github.com/ZaguanLabs/perplexity-go/perplexity/internal/http"
+	"github.com/ZaguanLabs/perplexity-go/perplexity/search"
 )
 
 // Client is the main Perplexity API client.
