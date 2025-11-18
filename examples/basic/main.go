@@ -20,6 +20,7 @@ func main() {
 		log.Fatal(err)
 	}
 
+	fmt.Printf("Perplexity Go SDK v%s\n", client.Version())
 	fmt.Printf("Client initialized with base URL: %s\n", client.BaseURL())
 
 	// Example: Create messages using helper functions

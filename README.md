@@ -3,7 +3,7 @@
 [![Go Reference](https://pkg.go.dev/badge/github.com/perplexityai/perplexity-go.svg)](https://pkg.go.dev/github.com/perplexityai/perplexity-go)
 [![Go Report Card](https://goreportcard.com/badge/github.com/perplexityai/perplexity-go)](https://goreportcard.com/report/github.com/perplexityai/perplexity-go)
 
-The official Go client library for the [Perplexity API](https://docs.perplexity.ai/).
+The **unofficial** Go client library for the [Perplexity API](https://docs.perplexity.ai/).
 
 > **⚠️ Work in Progress**: This SDK is currently under active development. The API may change before the v1.0.0 release.
 
@@ -14,7 +14,7 @@ The official Go client library for the [Perplexity API](https://docs.perplexity.
 - ✅ **Retry logic**: Automatic exponential backoff for transient errors
 - ✅ **Zero dependencies**: Uses only the Go standard library
 - ✅ **Chat completions**: Full support for chat API with 60+ parameters
-- 🚧 **Streaming support**: Server-Sent Events (SSE) for real-time responses (coming in Phase 4)
+- ✅ **Streaming support**: Server-Sent Events (SSE) for real-time responses
 - 🚧 **Search API**: Web search capabilities (coming in Phase 5)
 
 ## Installation
@@ -165,10 +165,14 @@ Helper functions:
 - [x] Comprehensive tests
 - [x] Working examples
 
-### Phase 4: Streaming 📋 (Planned)
-- [ ] SSE decoder
-- [ ] Stream type
-- [ ] Streaming support
+### Phase 4: Streaming ✅ (Completed)
+- [x] SSE (Server-Sent Events) decoder
+- [x] Stream type with Next() and Iter() methods
+- [x] CreateStream() method
+- [x] Context cancellation support
+- [x] Error event handling
+- [x] Comprehensive streaming tests
+- [x] Streaming examples
 
 ### Phase 5: Search API 📋 (Planned)
 - [ ] Search service

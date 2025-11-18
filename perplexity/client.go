@@ -80,3 +80,8 @@ func (c *Client) APIKey() string {
 func (c *Client) BaseURL() string {
 	return c.baseURL
 }
+
+// Version returns the SDK version.
+func (c *Client) Version() string {
+	return Version
+}

@@ -14,9 +14,11 @@ const (
 
 	// DefaultMaxRetries is the default maximum number of retries for failed requests.
 	DefaultMaxRetries = 2
+)
 
+var (
 	// DefaultUserAgent is the default User-Agent header.
-	DefaultUserAgent = "perplexity-go/0.1.0"
+	DefaultUserAgent = UserAgent()
 )
 
 // ClientOption is a functional option for configuring the Client.

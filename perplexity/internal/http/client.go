@@ -58,6 +58,14 @@ type Response struct {
 	RequestID  string
 }
 
+// StreamResponse represents a streaming HTTP response.
+type StreamResponse struct {
+	StatusCode int
+	Headers    http.Header
+	Response   *http.Response
+	RequestID  string
+}
+
 // Do executes an HTTP request with retry logic.
 func (c *Client) Do(ctx context.Context, req *Request) (*Response, error) {
 	var lastErr error
@@ -231,4 +239,92 @@ func (c *Client) errorFromResponse(resp *Response) error {
 	// Return a simple error for now
 	// This will be replaced with proper typed errors
 	return fmt.Errorf("%s (status: %d, request_id: %s)", message, resp.StatusCode, resp.RequestID)
+}
+
+// DoStream executes a streaming HTTP request.
+// The caller is responsible for closing the response body.
+func (c *Client) DoStream(ctx context.Context, req *Request) (*StreamResponse, error) {
+	// Build URL
+	url := c.baseURL + req.Path
+
+	// Marshal body if present
+	var bodyReader io.Reader
+	if req.Body != nil {
+		bodyBytes, err := json.Marshal(req.Body)
+		if err != nil {
+			return nil, fmt.Errorf("failed to marshal request body: %w", err)
+		}
+		bodyReader = bytes.NewReader(bodyBytes)
+	}
+
+	// Create HTTP request
+	httpReq, err := http.NewRequestWithContext(ctx, req.Method, url, bodyReader)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create request: %w", err)
+	}
+
+	// Set headers
+	httpReq.Header.Set("Authorization", "Bearer "+c.apiKey)
+	httpReq.Header.Set("Content-Type", "application/json")
+	httpReq.Header.Set("User-Agent", c.userAgent)
+	httpReq.Header.Set("Accept", "text/event-stream")
+	httpReq.Header.Set("Cache-Control", "no-cache")
+	httpReq.Header.Set("Connection", "keep-alive")
+
+	// Add default headers
+	for key, value := range c.defaultHeaders {
+		httpReq.Header.Set(key, value)
+	}
+
+	// Add request-specific headers
+	for key, value := range req.Headers {
+		httpReq.Header.Set(key, value)
+	}
+
+	// Execute request
+	httpResp, err := c.httpClient.Do(httpReq)
+	if err != nil {
+		return nil, fmt.Errorf("request failed: %w", err)
+	}
+
+	// Check for error status codes
+	if httpResp.StatusCode >= 400 {
+		// Read error body
+		body, _ := io.ReadAll(httpResp.Body)
+		httpResp.Body.Close()
+
+		var errorBody struct {
+			Message string `json:"message"`
+			Error   string `json:"error"`
+		}
+
+		message := fmt.Sprintf("HTTP %d", httpResp.StatusCode)
+		if err := json.Unmarshal(body, &errorBody); err == nil {
+			if errorBody.Message != "" {
+				message = errorBody.Message
+			} else if errorBody.Error != "" {
+				message = errorBody.Error
+			}
+		}
+
+		requestID := httpResp.Header.Get("X-Request-Id")
+		if requestID == "" {
+			requestID = httpResp.Header.Get("X-Request-ID")
+		}
+
+		return nil, fmt.Errorf("%s (status: %d, request_id: %s)", message, httpResp.StatusCode, requestID)
+	}
+
+	// Extract request ID from headers
+	requestID := httpResp.Header.Get("X-Request-Id")
+	if requestID == "" {
+		requestID = httpResp.Header.Get("X-Request-ID")
+	}
+
+	return &StreamResponse{
+		StatusCode: httpResp.StatusCode,
+		Headers:    httpResp.Header,
+		Response:   httpResp,
+		RequestID:  requestID,
+	}, nil
 }

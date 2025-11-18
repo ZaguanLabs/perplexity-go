@@ -82,6 +82,18 @@ func (s *Service) CreateStream(ctx context.Context, params *CompletionParams) (*
 	streamEnabled := true
 	params.Stream = &streamEnabled
 
-	// For now, return an error indicating streaming is not yet implemented
-	return nil, fmt.Errorf("streaming support coming in Phase 4")
+	// Make the streaming request
+	req := &http.Request{
+		Method: "POST",
+		Path:   "/chat/completions",
+		Body:   params,
+	}
+
+	resp, err := s.client.DoStream(ctx, req)
+	if err != nil {
+		return nil, fmt.Errorf("streaming request failed: %w", err)
+	}
+
+	// Create and return stream
+	return newStream(ctx, resp.Response), nil
 }

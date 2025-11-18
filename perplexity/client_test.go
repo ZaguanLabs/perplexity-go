@@ -143,3 +143,34 @@ func TestClientOptions(t *testing.T) {
 		}
 	})
 }
+
+func TestClient_Version(t *testing.T) {
+	client, err := NewClient("test-key")
+	if err != nil {
+		t.Fatalf("NewClient() error = %v", err)
+	}
+
+	version := client.Version()
+	if version == "" {
+		t.Error("Version() returned empty string")
+	}
+
+	// Should match the package Version constant
+	if version != Version {
+		t.Errorf("Version() = %v, want %v", version, Version)
+	}
+
+	// Should be in semantic version format
+	if version != "0.1.0" {
+		t.Errorf("Version() = %v, want 0.1.0", version)
+	}
+}
+
+func TestUserAgent(t *testing.T) {
+	ua := UserAgent()
+	expected := "perplexity-go/0.1.0"
+
+	if ua != expected {
+		t.Errorf("UserAgent() = %v, want %v", ua, expected)
+	}
+}
