@@ -70,7 +70,9 @@ type TextChunk struct {
 	Text string `json:"text"`
 }
 
-func (TextChunk) isContentChunk()   {}
+func (TextChunk) isContentChunk() {}
+
+// GetType returns the type of the text chunk.
 func (t TextChunk) GetType() string { return t.Type }
 
 // ImageChunk represents an image content chunk.
@@ -79,7 +81,9 @@ type ImageChunk struct {
 	ImageURL ImageURL `json:"image_url"`
 }
 
-func (ImageChunk) isContentChunk()   {}
+func (ImageChunk) isContentChunk() {}
+
+// GetType returns the type of the image chunk.
 func (i ImageChunk) GetType() string { return i.Type }
 
 // UnmarshalJSON implements custom unmarshaling for ImageChunk.
@@ -140,7 +144,9 @@ type FileChunk struct {
 	FileName *string `json:"file_name,omitempty"`
 }
 
-func (FileChunk) isContentChunk()   {}
+func (FileChunk) isContentChunk() {}
+
+// GetType returns the type of the file chunk.
 func (f FileChunk) GetType() string { return f.Type }
 
 // FileURL can be either a string URL or an object.
@@ -171,7 +177,9 @@ type PDFChunk struct {
 	PDFURL PDFURL `json:"pdf_url"`
 }
 
-func (PDFChunk) isContentChunk()   {}
+func (PDFChunk) isContentChunk() {}
+
+// GetType returns the type of the PDF chunk.
 func (p PDFChunk) GetType() string { return p.Type }
 
 // PDFURL can be either a string URL or an object.
@@ -202,7 +210,9 @@ type VideoChunk struct {
 	VideoURL VideoURL `json:"video_url"`
 }
 
-func (VideoChunk) isContentChunk()   {}
+func (VideoChunk) isContentChunk() {}
+
+// GetType returns the type of the video chunk.
 func (v VideoChunk) GetType() string { return v.Type }
 
 // VideoURL can be either a string URL or an object.

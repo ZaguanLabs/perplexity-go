@@ -193,38 +193,56 @@ func (StopArray) isStop() {}
 // SearchRecencyFilter specifies how recent search results should be.
 type SearchRecencyFilter string
 
+// Search recency filter constants
 const (
-	SearchRecencyHour  SearchRecencyFilter = "hour"
-	SearchRecencyDay   SearchRecencyFilter = "day"
-	SearchRecencyWeek  SearchRecencyFilter = "week"
+	// SearchRecencyHour filters results from the last hour
+	SearchRecencyHour SearchRecencyFilter = "hour"
+	// SearchRecencyDay filters results from the last day
+	SearchRecencyDay SearchRecencyFilter = "day"
+	// SearchRecencyWeek filters results from the last week
+	SearchRecencyWeek SearchRecencyFilter = "week"
+	// SearchRecencyMonth filters results from the last month
 	SearchRecencyMonth SearchRecencyFilter = "month"
-	SearchRecencyYear  SearchRecencyFilter = "year"
+	// SearchRecencyYear filters results from the last year
+	SearchRecencyYear SearchRecencyFilter = "year"
 )
 
 // SearchMode specifies the type of search to perform.
 type SearchMode string
 
+// Search mode constants
 const (
-	SearchModeWeb      SearchMode = "web"
+	// SearchModeWeb performs a web search
+	SearchModeWeb SearchMode = "web"
+	// SearchModeAcademic performs an academic search
 	SearchModeAcademic SearchMode = "academic"
-	SearchModeSEC      SearchMode = "sec"
+	// SearchModeSEC performs an SEC filings search
+	SearchModeSEC SearchMode = "sec"
 )
 
 // ReasoningEffort controls the depth of reasoning.
 type ReasoningEffort string
 
+// Reasoning effort constants
 const (
+	// ReasoningEffortMinimal uses minimal reasoning
 	ReasoningEffortMinimal ReasoningEffort = "minimal"
-	ReasoningEffortLow     ReasoningEffort = "low"
-	ReasoningEffortMedium  ReasoningEffort = "medium"
-	ReasoningEffortHigh    ReasoningEffort = "high"
+	// ReasoningEffortLow uses low reasoning effort
+	ReasoningEffortLow ReasoningEffort = "low"
+	// ReasoningEffortMedium uses medium reasoning effort
+	ReasoningEffortMedium ReasoningEffort = "medium"
+	// ReasoningEffortHigh uses high reasoning effort
+	ReasoningEffortHigh ReasoningEffort = "high"
 )
 
 // StreamMode controls streaming behavior.
 type StreamMode string
 
+// Stream mode constants
 const (
-	StreamModeFull    StreamMode = "full"
+	// StreamModeFull returns full streaming output
+	StreamModeFull StreamMode = "full"
+	// StreamModeConcise returns concise streaming output
 	StreamModeConcise StreamMode = "concise"
 )
 
@@ -249,10 +267,14 @@ type ResponseFormat struct {
 // ResponseFormatType specifies the type of response format.
 type ResponseFormatType string
 
+// Response format type constants
 const (
-	ResponseFormatTypeText       ResponseFormatType = "text"
+	// ResponseFormatTypeText returns plain text responses
+	ResponseFormatTypeText ResponseFormatType = "text"
+	// ResponseFormatTypeJSONSchema returns JSON following a schema
 	ResponseFormatTypeJSONSchema ResponseFormatType = "json_schema"
-	ResponseFormatTypeRegex      ResponseFormatType = "regex"
+	// ResponseFormatTypeRegex returns text matching a regex pattern
+	ResponseFormatTypeRegex ResponseFormatType = "regex"
 )
 
 // JSONSchema defines a JSON schema for structured output.
