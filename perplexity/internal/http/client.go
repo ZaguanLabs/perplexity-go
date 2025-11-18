@@ -3,11 +3,12 @@ package http
 import (
 	"bytes"
 	"context"
+	"crypto/rand"
+	"encoding/binary"
 	"encoding/json"
 	"fmt"
 	"io"
 	"math"
-	"math/rand"
 	"net/http"
 	"time"
 )
@@ -207,12 +208,18 @@ func (c *Client) calculateBackoff(attempt int) time.Duration {
 		delay = MaxRetryDelay
 	}
 
-	// Add jitter (±25%)
-	jitter := time.Duration(rand.Float64() * 0.5 * float64(delay))
-	if rand.Intn(2) == 0 {
-		delay += jitter
-	} else {
-		delay -= jitter
+	// Add jitter (±25%) using crypto/rand for security
+	var randomBytes [8]byte
+	if _, err := rand.Read(randomBytes[:]); err == nil {
+		randomValue := binary.BigEndian.Uint64(randomBytes[:])
+		// Convert to float64 in range [0, 1)
+		randomFloat := float64(randomValue) / float64(^uint64(0))
+		jitter := time.Duration(randomFloat * 0.5 * float64(delay))
+		if randomBytes[0]&1 == 0 {
+			delay += jitter
+		} else {
+			delay -= jitter
+		}
 	}
 
 	return delay
@@ -291,7 +298,7 @@ func (c *Client) DoStream(ctx context.Context, req *Request) (*StreamResponse, e
 	if httpResp.StatusCode >= 400 {
 		// Read error body
 		body, _ := io.ReadAll(httpResp.Body)
-		httpResp.Body.Close()
+		_ = httpResp.Body.Close() // Explicitly ignore close error for error response
 
 		var errorBody struct {
 			Message string `json:"message"`
