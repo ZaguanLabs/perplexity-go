@@ -248,7 +248,10 @@ const (
 
 // WebSearchOptions configures web search behavior.
 type WebSearchOptions struct {
-	UserLocation *UserLocation `json:"user_location,omitempty"`
+	UserLocation                  *UserLocation      `json:"user_location,omitempty"`
+	ImageResultsEnhancedRelevance *bool              `json:"image_results_enhanced_relevance,omitempty"`
+	SearchContextSize             *SearchContextSize `json:"search_context_size,omitempty"`
+	SearchType                    *SearchType        `json:"search_type,omitempty"`
 }
 
 // UserLocation specifies user's geographic location.
@@ -256,6 +259,26 @@ type UserLocation struct {
 	Latitude  float64 `json:"latitude"`
 	Longitude float64 `json:"longitude"`
 }
+
+// SearchContextSize specifies the size of the search context.
+type SearchContextSize string
+
+// Search context size constants
+const (
+	SearchContextSizeLow    SearchContextSize = "low"
+	SearchContextSizeMedium SearchContextSize = "medium"
+	SearchContextSizeHigh   SearchContextSize = "high"
+)
+
+// SearchType specifies the type of search to perform.
+type SearchType string
+
+// Search type constants
+const (
+	SearchTypeFast SearchType = "fast"
+	SearchTypePro  SearchType = "pro"
+	SearchTypeAuto SearchType = "auto"
+)
 
 // ResponseFormat specifies the format of the response.
 type ResponseFormat struct {

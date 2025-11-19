@@ -21,13 +21,13 @@ profile.cov
 /bin/
 /build/
 main
-chat
-search
+# chat
+# search
 streaming
 basic
 **/main
-**/chat
-**/search
+# **/chat
+# **/search
 **/streaming
 **/basic
 # Exclude any executable files
