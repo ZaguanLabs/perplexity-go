@@ -159,16 +159,11 @@ func TestClient_Version(t *testing.T) {
 	if version != Version {
 		t.Errorf("Version() = %v, want %v", version, Version)
 	}
-
-	// Should be in semantic version format
-	if version != "0.1.0" {
-		t.Errorf("Version() = %v, want 0.1.0", version)
-	}
 }
 
 func TestUserAgent(t *testing.T) {
 	ua := UserAgent()
-	expected := "perplexity-go/0.1.0"
+	expected := "perplexity-go/" + Version
 
 	if ua != expected {
 		t.Errorf("UserAgent() = %v, want %v", ua, expected)

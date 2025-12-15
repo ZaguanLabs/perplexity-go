@@ -6,10 +6,35 @@ import (
 	"net/http"
 	"os"
 
+	"github.com/ZaguanLabs/perplexity-go/perplexity/asyncchat"
 	"github.com/ZaguanLabs/perplexity-go/perplexity/chat"
 	internalhttp "github.com/ZaguanLabs/perplexity-go/perplexity/internal/http"
 	"github.com/ZaguanLabs/perplexity-go/perplexity/search"
 )
+
+func clientErrorFactory(kind internalhttp.ErrorKind, statusCode int, message string, body []byte, requestID string, cause error) error {
+	switch kind {
+	case internalhttp.ErrorKindStatus:
+		return newError(statusCode, message, body, requestID)
+	case internalhttp.ErrorKindTimeout:
+		msg := message
+		if cause != nil {
+			msg = fmt.Sprintf("%s: %v", message, cause)
+		}
+		return &TimeoutError{Err: &Error{Message: msg, StatusCode: statusCode, Body: body, RequestID: requestID}}
+	case internalhttp.ErrorKindConnection:
+		msg := message
+		if cause != nil {
+			msg = fmt.Sprintf("%s: %v", message, cause)
+		}
+		return &ConnectionError{Err: &Error{Message: msg, StatusCode: statusCode, Body: body, RequestID: requestID}}
+	default:
+		if cause != nil {
+			return fmt.Errorf("perplexity: %s: %w", message, cause)
+		}
+		return fmt.Errorf("perplexity: %s", message)
+	}
+}
 
 // Client is the main Perplexity API client.
 type Client struct {
@@ -21,8 +46,9 @@ type Client struct {
 	userAgent      string
 
 	// Services
-	Chat   *chat.Service
-	Search *search.Service
+	Chat      *chat.Service
+	Search    *search.Service
+	AsyncChat *asyncchat.Service
 }
 
 // NewClient creates a new Perplexity API client.
@@ -48,6 +74,10 @@ func NewClient(apiKey string, opts ...ClientOption) (*Client, error) {
 		},
 	}
 
+	if baseURL := os.Getenv("PERPLEXITY_BASE_URL"); baseURL != "" {
+		client.baseURL = baseURL
+	}
+
 	// Apply options
 	for _, opt := range opts {
 		if err := opt(client); err != nil {
@@ -63,11 +93,13 @@ func NewClient(apiKey string, opts ...ClientOption) (*Client, error) {
 		client.maxRetries,
 		client.defaultHeaders,
 		client.userAgent,
+		clientErrorFactory,
 	)
 
 	// Initialize services
 	client.Chat = chat.NewService(httpClientWrapper)
 	client.Search = search.NewService(httpClientWrapper)
+	client.AsyncChat = asyncchat.NewService(httpClientWrapper)
 
 	return client, nil
 }

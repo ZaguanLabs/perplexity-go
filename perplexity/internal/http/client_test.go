@@ -21,7 +21,7 @@ func TestNewClient(t *testing.T) {
 	headers := map[string]string{"X-Custom": "value"}
 	userAgent := "test-agent"
 
-	client := NewClient(httpClient, baseURL, apiKey, maxRetries, headers, userAgent)
+	client := NewClient(httpClient, baseURL, apiKey, maxRetries, headers, userAgent, nil)
 
 	if client.httpClient != httpClient {
 		t.Error("httpClient not set correctly")
@@ -74,6 +74,7 @@ func TestClient_Do_Success(t *testing.T) {
 		2,
 		map[string]string{"X-Custom": "custom-value"},
 		"test-agent",
+		nil,
 	)
 
 	req := &Request{
@@ -117,7 +118,7 @@ func TestClient_Do_Retry(t *testing.T) {
 	}))
 	defer server.Close()
 
-	client := NewClient(server.Client(), server.URL, "test-key", 3, nil, "test-agent")
+	client := NewClient(server.Client(), server.URL, "test-key", 3, nil, "test-agent", nil)
 
 	req := &Request{
 		Method: "GET",
@@ -146,7 +147,7 @@ func TestClient_Do_MaxRetriesExceeded(t *testing.T) {
 	}))
 	defer server.Close()
 
-	client := NewClient(server.Client(), server.URL, "test-key", 2, nil, "test-agent")
+	client := NewClient(server.Client(), server.URL, "test-key", 2, nil, "test-agent", nil)
 
 	req := &Request{
 		Method: "GET",
@@ -171,7 +172,7 @@ func TestClient_Do_ContextCancellation(t *testing.T) {
 	}))
 	defer server.Close()
 
-	client := NewClient(server.Client(), server.URL, "test-key", 2, nil, "test-agent")
+	client := NewClient(server.Client(), server.URL, "test-key", 2, nil, "test-agent", nil)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 50*time.Millisecond)
 	defer cancel()
@@ -199,7 +200,7 @@ func TestClient_Do_NonRetryableError(t *testing.T) {
 	}))
 	defer server.Close()
 
-	client := NewClient(server.Client(), server.URL, "test-key", 2, nil, "test-agent")
+	client := NewClient(server.Client(), server.URL, "test-key", 2, nil, "test-agent", nil)
 
 	req := &Request{
 		Method: "GET",
@@ -229,7 +230,7 @@ func TestClient_Do_RateLimitRetry(t *testing.T) {
 	}))
 	defer server.Close()
 
-	client := NewClient(server.Client(), server.URL, "test-key", 2, nil, "test-agent")
+	client := NewClient(server.Client(), server.URL, "test-key", 2, nil, "test-agent", nil)
 
 	req := &Request{
 		Method: "GET",
@@ -269,7 +270,7 @@ func TestClient_DoStream_Success(t *testing.T) {
 	}))
 	defer server.Close()
 
-	client := NewClient(server.Client(), server.URL, "test-key", 2, nil, "test-agent")
+	client := NewClient(server.Client(), server.URL, "test-key", 2, nil, "test-agent", nil)
 
 	req := &Request{
 		Method: "POST",
@@ -309,7 +310,7 @@ func TestClient_DoStream_Error(t *testing.T) {
 	}))
 	defer server.Close()
 
-	client := NewClient(server.Client(), server.URL, "test-key", 2, nil, "test-agent")
+	client := NewClient(server.Client(), server.URL, "test-key", 2, nil, "test-agent", nil)
 
 	req := &Request{
 		Method: "POST",
@@ -327,16 +328,16 @@ func TestClient_DoStream_Error(t *testing.T) {
 }
 
 func TestClient_CalculateBackoff(t *testing.T) {
-	client := NewClient(&http.Client{}, "https://api.example.com", "key", 3, nil, "agent")
+	client := NewClient(&http.Client{}, "https://api.example.com", "key", 3, nil, "agent", nil)
 
 	tests := []struct {
 		attempt  int
 		minDelay time.Duration
 		maxDelay time.Duration
 	}{
-		{1, 250 * time.Millisecond, 750 * time.Millisecond},  // 500ms ±25%
-		{2, 500 * time.Millisecond, 1500 * time.Millisecond}, // 1s ±25%
-		{3, 1 * time.Second, 3 * time.Second},                // 2s ±25%
+		{1, 375 * time.Millisecond, 625 * time.Millisecond},   // 500ms ±25%
+		{2, 750 * time.Millisecond, 1250 * time.Millisecond},  // 1s ±25%
+		{3, 1500 * time.Millisecond, 2500 * time.Millisecond}, // 2s ±25%
 	}
 
 	for _, tt := range tests {
@@ -350,7 +351,7 @@ func TestClient_CalculateBackoff(t *testing.T) {
 }
 
 func TestClient_CalculateBackoff_MaxDelay(t *testing.T) {
-	client := NewClient(&http.Client{}, "https://api.example.com", "key", 10, nil, "agent")
+	client := NewClient(&http.Client{}, "https://api.example.com", "key", 10, nil, "agent", nil)
 
 	// Test that backoff is capped at MaxRetryDelay
 	delay := client.calculateBackoff(10)                       // Very high attempt number
@@ -361,7 +362,7 @@ func TestClient_CalculateBackoff_MaxDelay(t *testing.T) {
 }
 
 func TestClient_ShouldRetryStatus(t *testing.T) {
-	client := NewClient(&http.Client{}, "https://api.example.com", "key", 3, nil, "agent")
+	client := NewClient(&http.Client{}, "https://api.example.com", "key", 3, nil, "agent", nil)
 
 	retryableStatuses := []int{
 		http.StatusRequestTimeout,      // 408
@@ -427,6 +428,7 @@ func TestClient_RequestHeaders(t *testing.T) {
 		0,
 		map[string]string{"X-Custom": "custom-value"},
 		"test-agent/1.0",
+		nil,
 	)
 
 	req := &Request{
@@ -454,7 +456,7 @@ func TestClient_ErrorResponse(t *testing.T) {
 	}))
 	defer server.Close()
 
-	client := NewClient(server.Client(), server.URL, "test-key", 0, nil, "test-agent")
+	client := NewClient(server.Client(), server.URL, "test-key", 0, nil, "test-agent", nil)
 
 	req := &Request{
 		Method: "POST",

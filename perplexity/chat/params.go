@@ -168,6 +168,12 @@ type CompletionParams struct {
 	// StreamMode controls streaming mode (optional).
 	StreamMode *StreamMode `json:"stream_mode,omitempty"`
 
+	// ForceNewAgent forces creating a new agent for this request (optional).
+	ForceNewAgent *bool `json:"_force_new_agent,omitempty"`
+
+	// UserOriginalQuery stores the user's original query (optional).
+	UserOriginalQuery *string `json:"user_original_query,omitempty"`
+
 	// Internal/debug parameters (optional, not recommended for general use)
 	DebugProSearch    *bool `json:"_debug_pro_search,omitempty"`
 	Inputs            []int `json:"_inputs,omitempty"`

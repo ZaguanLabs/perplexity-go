@@ -82,6 +82,7 @@ func TestService_Create(t *testing.T) {
 		2,
 		nil,
 		"test-agent",
+		nil,
 	)
 	service := NewService(httpClient)
 

@@ -23,6 +23,7 @@ An **unofficial**, community-maintained Go client library for the [Perplexity AP
 
 ### Core Capabilities
 - **Chat Completions**: Full support for Perplexity's chat API with 60+ parameters
+- **Async Chat Completions**: Submit, list, and retrieve asynchronous chat completion requests
 - **Streaming Responses**: Real-time streaming with Server-Sent Events (SSE)
 - **Web Search**: Advanced search with filtering, multiple queries, and specialized modes
 - **Tool Calling**: Function calling and tool integration
@@ -92,6 +93,48 @@ func main() {
     for _, item := range searchResult.Results {
         fmt.Printf("%s: %s\n", item.Title, item.URL)
     }
+}
+```
+
+## Async Chat Completions
+
+Submit long-running chat completion requests and retrieve results later:
+
+```go
+import (
+    "github.com/ZaguanLabs/perplexity-go/perplexity/asyncchat"
+)
+
+// Submit an async chat completion request
+asyncResult, err := client.AsyncChat.Create(ctx, &asyncchat.CompletionCreateParams{
+    Request: &chat.CompletionParams{
+        Model: "sonar",
+        Messages: []types.ChatMessage{
+            types.UserMessage("Explain quantum computing in detail"),
+        },
+    },
+})
+if err != nil {
+    log.Fatal(err)
+}
+fmt.Printf("Request ID: %s, Status: %s\n", asyncResult.ID, asyncResult.Status)
+
+// List all async requests
+listResult, err := client.AsyncChat.List(ctx)
+if err != nil {
+    log.Fatal(err)
+}
+for _, req := range listResult.Requests {
+    fmt.Printf("ID: %s, Status: %s\n", req.ID, req.Status)
+}
+
+// Get a specific async request result
+getResult, err := client.AsyncChat.Get(ctx, asyncResult.ID, nil)
+if err != nil {
+    log.Fatal(err)
+}
+if getResult.Status == asyncchat.CompletionStatusCompleted && getResult.Response != nil {
+    fmt.Println(getResult.Response.Choices[0].Message.Content)
 }
 ```
 

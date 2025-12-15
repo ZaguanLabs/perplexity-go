@@ -6,9 +6,11 @@ import (
 	"crypto/rand"
 	"encoding/binary"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"math"
+	"net"
 	"net/http"
 	"time"
 )
@@ -21,6 +23,16 @@ const (
 	MaxRetryDelay = 60 * time.Second
 )
 
+type ErrorKind int
+
+const (
+	ErrorKindStatus ErrorKind = iota
+	ErrorKindConnection
+	ErrorKindTimeout
+)
+
+type ErrorFactory func(kind ErrorKind, statusCode int, message string, body []byte, requestID string, cause error) error
+
 // Client wraps an HTTP client with retry logic and error handling.
 type Client struct {
 	httpClient     *http.Client
@@ -29,10 +41,11 @@ type Client struct {
 	maxRetries     int
 	defaultHeaders map[string]string
 	userAgent      string
+	errorFactory   ErrorFactory
 }
 
 // NewClient creates a new HTTP client wrapper.
-func NewClient(httpClient *http.Client, baseURL, apiKey string, maxRetries int, defaultHeaders map[string]string, userAgent string) *Client {
+func NewClient(httpClient *http.Client, baseURL, apiKey string, maxRetries int, defaultHeaders map[string]string, userAgent string, errorFactory ErrorFactory) *Client {
 	return &Client{
 		httpClient:     httpClient,
 		baseURL:        baseURL,
@@ -40,6 +53,7 @@ func NewClient(httpClient *http.Client, baseURL, apiKey string, maxRetries int, 
 		maxRetries:     maxRetries,
 		defaultHeaders: defaultHeaders,
 		userAgent:      userAgent,
+		errorFactory:   errorFactory,
 	}
 }
 
@@ -86,10 +100,10 @@ func (c *Client) Do(ctx context.Context, req *Request) (*Response, error) {
 
 		resp, err := c.doRequest(ctx, req)
 		if err != nil {
-			lastErr = err
+			lastErr = c.wrapTransportError(err)
 			// Check if error is retryable
 			if !c.shouldRetryError(err) {
-				return nil, err
+				return nil, lastErr
 			}
 			continue
 		}
@@ -180,9 +194,14 @@ func (c *Client) doRequest(ctx context.Context, req *Request) (*Response, error)
 
 // shouldRetryError determines if an error should trigger a retry.
 func (c *Client) shouldRetryError(err error) bool {
-	// Retry on network errors, timeouts, etc.
-	// For now, we'll retry on any error (can be refined later)
-	return true
+	if err == nil {
+		return false
+	}
+	if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
+		return false
+	}
+	var netErr net.Error
+	return errors.As(err, &netErr)
 }
 
 // shouldRetryStatus determines if a status code should trigger a retry.
@@ -214,7 +233,7 @@ func (c *Client) calculateBackoff(attempt int) time.Duration {
 		randomValue := binary.BigEndian.Uint64(randomBytes[:])
 		// Convert to float64 in range [0, 1)
 		randomFloat := float64(randomValue) / float64(^uint64(0))
-		jitter := time.Duration(randomFloat * 0.5 * float64(delay))
+		jitter := time.Duration(randomFloat * 0.25 * float64(delay))
 		if randomBytes[0]&1 == 0 {
 			delay += jitter
 		} else {
@@ -243,9 +262,30 @@ func (c *Client) errorFromResponse(resp *Response) error {
 		}
 	}
 
-	// Return a simple error for now
-	// This will be replaced with proper typed errors
+	if c.errorFactory != nil {
+		if err := c.errorFactory(ErrorKindStatus, resp.StatusCode, message, resp.Body, resp.RequestID, nil); err != nil {
+			return err
+		}
+	}
 	return fmt.Errorf("%s (status: %d, request_id: %s)", message, resp.StatusCode, resp.RequestID)
+}
+
+func (c *Client) wrapTransportError(err error) error {
+	if err == nil {
+		return nil
+	}
+	if c.errorFactory == nil {
+		return fmt.Errorf("request failed: %w", err)
+	}
+	kind := ErrorKindConnection
+	var netErr net.Error
+	if errors.As(err, &netErr) && netErr.Timeout() {
+		kind = ErrorKindTimeout
+	}
+	if wrapped := c.errorFactory(kind, 0, err.Error(), nil, "", err); wrapped != nil {
+		return wrapped
+	}
+	return fmt.Errorf("request failed: %w", err)
 }
 
 // DoStream executes a streaming HTTP request.
@@ -291,7 +331,7 @@ func (c *Client) DoStream(ctx context.Context, req *Request) (*StreamResponse, e
 	// Execute request
 	httpResp, err := c.httpClient.Do(httpReq)
 	if err != nil {
-		return nil, fmt.Errorf("request failed: %w", err)
+		return nil, c.wrapTransportError(err)
 	}
 
 	// Check for error status codes
@@ -319,6 +359,11 @@ func (c *Client) DoStream(ctx context.Context, req *Request) (*StreamResponse, e
 			requestID = httpResp.Header.Get("X-Request-ID")
 		}
 
+		if c.errorFactory != nil {
+			if err := c.errorFactory(ErrorKindStatus, httpResp.StatusCode, message, body, requestID, nil); err != nil {
+				return nil, err
+			}
+		}
 		return nil, fmt.Errorf("%s (status: %d, request_id: %s)", message, httpResp.StatusCode, requestID)
 	}
 
