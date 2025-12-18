@@ -31,7 +31,7 @@ basic
 **/streaming
 **/basic
 # Exclude any executable files
-*[!.go][!.md][!.txt]
+# Note: Removed broken pattern *[!.go][!.md][!.txt] that was incorrectly excluding .go files
 
 # Dependency directories (remove the comment below to include it)
 # vendor/
