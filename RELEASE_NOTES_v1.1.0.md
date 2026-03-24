@@ -1,59 +1,71 @@
-# 🎉 Perplexity Go SDK v1.1.0
+# Perplexity Go SDK v1.1.0
 
 **Release Date:** March 24, 2026  
-**Status:** Stable Release ✅
+**Status:** Stable Release
 
 ---
 
-## Overview
+## Release Summary
 
-`v1.1.0` is a parity-focused release that brings the Go SDK into much closer alignment with the official Python SDK across client behavior, transport metadata, shared schemas, and newer API resources.
+`v1.1.0` is a major parity release for the Perplexity Go SDK.
 
-This release expands the public SDK surface, tightens request and response modeling, improves retry semantics, and significantly strengthens cross-resource test coverage.
+This version brings the Go SDK substantially closer to the official Python SDK by expanding the public client surface, tightening request and response schemas, aligning transport behavior, and strengthening validation across resources.
+
+If you want the short version: this release makes the Go SDK more complete, more predictable, and much closer to the reference implementation.
 
 ---
 
 ## Highlights
 
-### Expanded SDK Surface
-- Added `Responses`
-- Added `Embeddings`
-- Added `ContextualizedEmbeddings`
-- Added `Browser` with `Browser.Sessions`
+### New public SDK resources
+The Go client now exposes the newer resource families that were previously missing from the public surface:
 
-### Python SDK Parity Improvements
-- Aligned retry semantics with the Python SDK
-- Added default `X-Stainless-*` transport metadata headers
-- Tightened shared chat message unions and nullable content handling
-- Improved `asyncchat` request and response coverage
-- Updated examples to match the stricter typed `search.Query` API
+- `Responses`
+- `Embeddings`
+- `ContextualizedEmbeddings`
+- `Browser` with `Browser.Sessions`
 
-### Validation and Reliability
-- Added focused tests for retry behavior, typed errors, async chat flows, and shared content unions
-- Verified full test suite with `go test ./...`
+### Python SDK parity improvements
+This release closes a broad set of parity gaps with the official Python SDK, including:
+
+- shared message-content unions and nullable content handling
+- retry behavior and retry header support
+- default client metadata headers
+- async chat request and response coverage
+- stricter typed search query handling
+
+### Stronger validation and tests
+`v1.1.0` also expands the validation story around the SDK by adding focused tests for the areas most likely to drift from parity:
+
+- retry semantics
+- typed error mapping
+- async chat flows
+- structured chat content unions
+- cross-resource request validation
 
 ---
 
-## What Changed
+## What’s New
 
 ### Added
+
 - Public client initialization for:
   - `Client.Responses`
   - `Client.Embeddings`
   - `Client.ContextualizedEmbeddings`
   - `Client.Browser`
-- Dedicated `asyncchat` service tests covering:
+- Dedicated `asyncchat` service coverage for:
   - create
   - list
   - get
   - validation
   - header and query propagation
-- Shared message-model tests for:
+- Shared message-model tests covering:
   - `content: null`
   - `file_url` unions
   - `pdf_url` unions
   - `video_url` unions
-- Retry tests for:
+- Retry coverage for:
   - `retry-after-ms`
   - `retry-after`
   - `x-should-retry`
@@ -66,32 +78,35 @@ This release expands the public SDK surface, tightens request and response model
   - `X-Stainless-Runtime-Version`
 
 ### Changed
+
 - Updated SDK version to `v1.1.0`
 - Refined shared chat content parsing to better match Python SDK union behavior
 - Updated backoff handling to honor server retry headers with capped exponential backoff and jitter
 - Improved naming consistency in `asyncchat.Get()` by using `requestID`
 
 ### Fixed
+
 - Fixed compile fallout in `examples/search/main.go` after stricter `search.Query` typing
-- Fixed test coverage gaps around retry behavior and typed error mapping
+- Fixed coverage gaps around retry behavior and typed error mapping
 - Fixed missing transport metadata behavior relative to the Python SDK
 
 ---
 
 ## Upgrade Notes
 
-### Version Bump
-Update to the new release with:
+### Install or update
 
 ```bash
 go get github.com/ZaguanLabs/perplexity-go/perplexity@v1.1.0
 ```
 
-### Search Query Typing
-If you were previously passing raw strings for search requests, use the typed `search.Query` wrapper instead.
+### Search query typing
 
-### Transport Metadata
-The client now sends default `X-Stainless-*` headers automatically. If you already set these manually, your explicit default headers still take precedence.
+If you were previously passing raw strings into search requests, update call sites to use the typed `search.Query` wrapper.
+
+### Transport metadata
+
+The client now sends default `X-Stainless-*` headers automatically. If you already provide those headers explicitly through client defaults, your explicit values still win.
 
 ---
 
@@ -103,7 +118,8 @@ This release was validated with:
 go test ./...
 ```
 
-All packages pass, including the expanded coverage for:
+All packages pass, including expanded coverage for:
+
 - `perplexity/internal/http`
 - `perplexity/asyncchat`
 - `perplexity/types`
@@ -114,12 +130,10 @@ All packages pass, including the expanded coverage for:
 
 ---
 
-## Changelog Reference
+## Changelog
 
-For the structured release summary, see:
-
-- `CHANGELOG.md` → `1.1.0`
+For the structured release summary, see `CHANGELOG.md` under `1.1.0`.
 
 ---
 
-**Thank you for using the Perplexity Go SDK.**
+Thank you for using the Perplexity Go SDK.
