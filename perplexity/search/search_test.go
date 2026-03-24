@@ -36,8 +36,7 @@ func TestService_Create(t *testing.T) {
 			t.Fatalf("Failed to decode request body: %v", err)
 		}
 
-		// Verify query field
-		if params.Query == nil {
+		if params.Query.Text == nil && len(params.Query.Texts) == 0 {
 			t.Error("Query is nil")
 		}
 
@@ -80,7 +79,7 @@ func TestService_Create(t *testing.T) {
 	// Test successful request with string query
 	t.Run("successful request with string query", func(t *testing.T) {
 		params := &SearchParams{
-			Query:      "golang programming",
+			Query:      Query{Text: types.String("golang programming")},
 			MaxResults: types.Int(10),
 		}
 
@@ -113,7 +112,7 @@ func TestService_Create(t *testing.T) {
 	// Test with array query
 	t.Run("successful request with array query", func(t *testing.T) {
 		params := &SearchParams{
-			Query: []string{"golang", "programming"},
+			Query: Query{Texts: []string{"golang", "programming"}},
 		}
 
 		result, err := service.Create(context.Background(), params)
@@ -148,7 +147,7 @@ func TestService_Create(t *testing.T) {
 
 	t.Run("empty string query", func(t *testing.T) {
 		params := &SearchParams{
-			Query: "",
+			Query: Query{Text: types.String("")},
 		}
 		_, err := service.Create(context.Background(), params)
 		if err == nil {
@@ -158,7 +157,7 @@ func TestService_Create(t *testing.T) {
 
 	t.Run("empty array query", func(t *testing.T) {
 		params := &SearchParams{
-			Query: []string{},
+			Query: Query{Texts: []string{}},
 		}
 		_, err := service.Create(context.Background(), params)
 		if err == nil {
@@ -168,21 +167,11 @@ func TestService_Create(t *testing.T) {
 
 	t.Run("array with empty string", func(t *testing.T) {
 		params := &SearchParams{
-			Query: []string{"valid", ""},
+			Query: Query{Texts: []string{"valid", ""}},
 		}
 		_, err := service.Create(context.Background(), params)
 		if err == nil {
 			t.Error("Expected error for array with empty string")
-		}
-	})
-
-	t.Run("invalid query type", func(t *testing.T) {
-		params := &SearchParams{
-			Query: 123, // Invalid type
-		}
-		_, err := service.Create(context.Background(), params)
-		if err == nil {
-			t.Error("Expected error for invalid query type")
 		}
 	})
 }
@@ -192,8 +181,8 @@ func TestSearchParams_QueryHelpers(t *testing.T) {
 		params := &SearchParams{}
 		params.QueryString("test query")
 
-		if params.Query != "test query" {
-			t.Errorf("Query = %v, want 'test query'", params.Query)
+		if params.Query.Text == nil || *params.Query.Text != "test query" {
+			t.Errorf("Query = %#v, want 'test query'", params.Query)
 		}
 	})
 
@@ -202,24 +191,19 @@ func TestSearchParams_QueryHelpers(t *testing.T) {
 		queries := []string{"query1", "query2"}
 		params.QueryStrings(queries)
 
-		queryArray, ok := params.Query.([]string)
-		if !ok {
-			t.Fatalf("Query is not []string, got %T", params.Query)
+		if len(params.Query.Texts) != 2 {
+			t.Errorf("Query length = %d, want 2", len(params.Query.Texts))
 		}
 
-		if len(queryArray) != 2 {
-			t.Errorf("Query length = %d, want 2", len(queryArray))
-		}
-
-		if queryArray[0] != "query1" {
-			t.Errorf("Query[0] = %s, want query1", queryArray[0])
+		if params.Query.Texts[0] != "query1" {
+			t.Errorf("Query[0] = %s, want query1", params.Query.Texts[0])
 		}
 	})
 }
 
 func TestSearchParams_JSON(t *testing.T) {
 	params := &SearchParams{
-		Query:                "golang",
+		Query:                Query{Text: types.String("golang")},
 		MaxResults:           types.Int(10),
 		Country:              types.String("US"),
 		DisplayServerTime:    types.Bool(true),
@@ -240,8 +224,8 @@ func TestSearchParams_JSON(t *testing.T) {
 	}
 
 	// Verify
-	if result.Query != params.Query {
-		t.Errorf("Query = %v, want %v", result.Query, params.Query)
+	if result.Query.Text == nil || params.Query.Text == nil || *result.Query.Text != *params.Query.Text {
+		t.Errorf("Query = %#v, want %#v", result.Query, params.Query)
 	}
 	if result.MaxResults == nil || *result.MaxResults != 10 {
 		t.Error("MaxResults mismatch")

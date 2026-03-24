@@ -229,10 +229,10 @@ func TestTool_JSON(t *testing.T) {
 		Type: ToolTypeFunction,
 		Function: ToolFunction{
 			Name:        "get_weather",
-			Description: String("Get the current weather"),
-			Parameters: map[string]interface{}{
-				"type": "object",
-				"properties": map[string]interface{}{
+			Description: "Get the current weather",
+			Parameters: ToolFunctionParameters{
+				Type: "object",
+				Properties: map[string]interface{}{
 					"location": map[string]interface{}{
 						"type":        "string",
 						"description": "The city and state",

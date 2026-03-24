@@ -52,7 +52,7 @@ func main() {
 
 func basicSearch(client *perplexity.Client) {
 	params := &search.SearchParams{
-		Query:      "latest developments in artificial intelligence",
+		Query:      search.Query{Text: types.String("latest developments in artificial intelligence")},
 		MaxResults: types.Int(5),
 	}
 
@@ -87,7 +87,7 @@ func advancedSearch(client *perplexity.Client) {
 	searchMode := chat.SearchModeWeb
 
 	params := &search.SearchParams{
-		Query:                "Go programming language",
+		Query:                search.Query{Text: types.String("Go programming language")},
 		MaxResults:           types.Int(3),
 		SearchRecencyFilter:  &recencyFilter,
 		SearchMode:           &searchMode,
@@ -98,7 +98,9 @@ func advancedSearch(client *perplexity.Client) {
 	}
 
 	fmt.Println("Searching with filters:")
-	fmt.Printf("  Query: %s\n", params.Query)
+	if params.Query.Text != nil {
+		fmt.Printf("  Query: %s\n", *params.Query.Text)
+	}
 	fmt.Printf("  Domains: %v\n", params.SearchDomainFilter)
 	fmt.Printf("  Recency: %s\n", *params.SearchRecencyFilter)
 	fmt.Println()
@@ -153,7 +155,7 @@ func academicSearch() {
 
 	searchMode := chat.SearchModeAcademic
 	params := &search.SearchParams{
-		Query:      "machine learning algorithms",
+		Query:      search.Query{Text: types.String("machine learning algorithms")},
 		MaxResults: types.Int(5),
 		SearchMode: &searchMode,
 	}
@@ -176,7 +178,7 @@ func secSearch() {
 
 	searchMode := chat.SearchModeSEC
 	params := &search.SearchParams{
-		Query:      "Tesla quarterly earnings",
+		Query:      search.Query{Text: types.String("Tesla quarterly earnings")},
 		MaxResults: types.Int(5),
 		SearchMode: &searchMode,
 	}

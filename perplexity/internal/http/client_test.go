@@ -342,7 +342,7 @@ func TestClient_CalculateBackoff(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(fmt.Sprintf("attempt_%d", tt.attempt), func(t *testing.T) {
-			delay := client.calculateBackoff(tt.attempt)
+			delay := client.calculateBackoff(tt.attempt, nil)
 			if delay < tt.minDelay || delay > tt.maxDelay {
 				t.Errorf("Backoff delay %v out of range [%v, %v]", delay, tt.minDelay, tt.maxDelay)
 			}
@@ -354,10 +354,40 @@ func TestClient_CalculateBackoff_MaxDelay(t *testing.T) {
 	client := NewClient(&http.Client{}, "https://api.example.com", "key", 10, nil, "agent", nil)
 
 	// Test that backoff is capped at MaxRetryDelay
-	delay := client.calculateBackoff(10)                       // Very high attempt number
+	delay := client.calculateBackoff(10, nil)                  // Very high attempt number
 	maxAllowed := time.Duration(float64(MaxRetryDelay) * 1.25) // Allow for jitter
 	if delay > maxAllowed {
 		t.Errorf("Backoff delay %v exceeds max %v", delay, maxAllowed)
+	}
+}
+
+func TestClient_CalculateBackoff_RetryAfter(t *testing.T) {
+	client := NewClient(&http.Client{}, "https://api.example.com", "key", 3, nil, "agent", nil)
+
+	headers := http.Header{}
+	headers.Set("retry-after-ms", "1500")
+	if delay := client.calculateBackoff(1, headers); delay != 1500*time.Millisecond {
+		t.Errorf("Backoff delay = %v, want %v", delay, 1500*time.Millisecond)
+	}
+
+	headers = http.Header{}
+	headers.Set("retry-after", "2.5")
+	if delay := client.calculateBackoff(1, headers); delay != 2500*time.Millisecond {
+		t.Errorf("Backoff delay = %v, want %v", delay, 2500*time.Millisecond)
+	}
+}
+
+func TestClient_ShouldRetryResponse_HeaderOverride(t *testing.T) {
+	client := NewClient(&http.Client{}, "https://api.example.com", "key", 3, nil, "agent", nil)
+
+	resp := &Response{StatusCode: http.StatusBadRequest, Headers: http.Header{"X-Should-Retry": []string{"true"}}}
+	if !client.shouldRetryResponse(resp) {
+		t.Error("Expected x-should-retry=true to force retry")
+	}
+
+	resp = &Response{StatusCode: http.StatusInternalServerError, Headers: http.Header{"X-Should-Retry": []string{"false"}}}
+	if client.shouldRetryResponse(resp) {
+		t.Error("Expected x-should-retry=false to suppress retry")
 	}
 }
 
@@ -405,8 +435,10 @@ func TestClient_RequestHeaders(t *testing.T) {
 		// Verify all expected headers
 		headers := map[string]string{
 			"Authorization":      "Bearer test-key",
+			"Accept":             "application/json",
 			"Content-Type":       "application/json",
 			"User-Agent":         "test-agent/1.0",
+			"X-Stainless-Async":  "false",
 			"X-Custom":           "custom-value",
 			"X-Request-Specific": "specific-value",
 		}

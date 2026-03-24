@@ -183,7 +183,11 @@ func TestCompletionParams_JSON(t *testing.T) {
 				Type: types.ToolTypeFunction,
 				Function: types.ToolFunction{
 					Name:        "get_weather",
-					Description: types.String("Get weather"),
+					Description: "Get weather",
+					Parameters: types.ToolFunctionParameters{
+						Type:       "object",
+						Properties: map[string]interface{}{},
+					},
 				},
 			},
 		},

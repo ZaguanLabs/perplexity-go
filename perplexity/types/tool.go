@@ -52,10 +52,19 @@ type ToolFunction struct {
 	Name string `json:"name"`
 
 	// Description is a description of what the function does (optional).
-	Description *string `json:"description,omitempty"`
+	Description string `json:"description"`
 
 	// Parameters contains the function parameters schema (optional).
-	Parameters map[string]interface{} `json:"parameters,omitempty"`
+	Parameters ToolFunctionParameters `json:"parameters"`
+
+	Strict *bool `json:"strict,omitempty"`
+}
+
+type ToolFunctionParameters struct {
+	Properties           map[string]interface{} `json:"properties"`
+	Type                 string                 `json:"type"`
+	AdditionalProperties *bool                  `json:"additional_properties,omitempty"`
+	Required             []string               `json:"required,omitempty"`
 }
 
 // ToolChoice represents how the model should choose tools.

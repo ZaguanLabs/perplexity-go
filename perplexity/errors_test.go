@@ -2,6 +2,7 @@ package perplexity
 
 import (
 	"net/http"
+	"reflect"
 	"testing"
 )
 
@@ -73,6 +74,9 @@ func TestNewError(t *testing.T) {
 			err := newError(tt.statusCode, tt.message, nil, "test-request-id")
 			if err == nil {
 				t.Fatal("newError() returned nil")
+			}
+			if got := reflect.TypeOf(err).String(); got != tt.wantType {
+				t.Errorf("newError() type = %s, want %s", got, tt.wantType)
 			}
 
 			// Check error message

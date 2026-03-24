@@ -84,6 +84,88 @@ func TestChatMessage_UnmarshalJSON_StructuredContent(t *testing.T) {
 	}
 }
 
+func TestChatMessage_UnmarshalJSON_NullContent(t *testing.T) {
+	jsonData := `{
+		"role": "assistant",
+		"content": null
+	}`
+
+	var msg ChatMessage
+	if err := json.Unmarshal([]byte(jsonData), &msg); err != nil {
+		t.Fatalf("Unmarshal failed: %v", err)
+	}
+
+	if msg.Role != RoleAssistant {
+		t.Errorf("Role = %v, want %v", msg.Role, RoleAssistant)
+	}
+	if msg.Content != nil {
+		t.Errorf("Content = %#v, want nil", msg.Content)
+	}
+}
+
+func TestChatMessage_UnmarshalJSON_FilePDFVideoChunkUnions(t *testing.T) {
+	jsonData := `{
+		"role": "user",
+		"content": [
+			{
+				"type": "file_url",
+				"file_url": "https://example.com/file.txt",
+				"file_name": "file.txt"
+			},
+			{
+				"type": "pdf_url",
+				"pdf_url": {"url": "https://example.com/doc.pdf"}
+			},
+			{
+				"type": "video_url",
+				"video_url": {"url": "https://example.com/video.mp4", "frame_interval": 5}
+			}
+		]
+	}`
+
+	var msg ChatMessage
+	if err := json.Unmarshal([]byte(jsonData), &msg); err != nil {
+		t.Fatalf("Unmarshal failed: %v", err)
+	}
+
+	structuredContent, ok := msg.Content.(StructuredContent)
+	if !ok {
+		t.Fatalf("Content is not StructuredContent, got %T", msg.Content)
+	}
+
+	if len(structuredContent) != 3 {
+		t.Fatalf("StructuredContent length = %d, want 3", len(structuredContent))
+	}
+
+	fileChunk, ok := structuredContent[0].(FileChunk)
+	if !ok {
+		t.Fatalf("First chunk is not FileChunk, got %T", structuredContent[0])
+	}
+	if _, ok := fileChunk.FileURL.(FileURLString); !ok {
+		t.Fatalf("FileURL is not FileURLString, got %T", fileChunk.FileURL)
+	}
+
+	pdfChunk, ok := structuredContent[1].(PDFChunk)
+	if !ok {
+		t.Fatalf("Second chunk is not PDFChunk, got %T", structuredContent[1])
+	}
+	if _, ok := pdfChunk.PDFURL.(PDFURLObject); !ok {
+		t.Fatalf("PDFURL is not PDFURLObject, got %T", pdfChunk.PDFURL)
+	}
+
+	videoChunk, ok := structuredContent[2].(VideoChunk)
+	if !ok {
+		t.Fatalf("Third chunk is not VideoChunk, got %T", structuredContent[2])
+	}
+	videoURL, ok := videoChunk.VideoURL.(VideoURLObject)
+	if !ok {
+		t.Fatalf("VideoURL is not VideoURLObject, got %T", videoChunk.VideoURL)
+	}
+	if videoURL.FrameInterval != float64(5) {
+		t.Errorf("FrameInterval = %#v, want 5", videoURL.FrameInterval)
+	}
+}
+
 func TestChatMessage_MarshalJSON_TextContent(t *testing.T) {
 	msg := ChatMessage{
 		Role:    RoleAssistant,

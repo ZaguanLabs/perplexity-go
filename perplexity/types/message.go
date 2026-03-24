@@ -30,6 +30,8 @@ type ChatMessage struct {
 	// Content is the message content (can be string or structured content).
 	Content MessageContent `json:"content"`
 
+	ToolCallID *string `json:"tool_call_id,omitempty"`
+
 	// ReasoningSteps contains reasoning steps (optional).
 	ReasoningSteps []ReasoningStep `json:"reasoning_steps,omitempty"`
 
@@ -149,6 +151,34 @@ func (FileChunk) isContentChunk() {}
 // GetType returns the type of the file chunk.
 func (f FileChunk) GetType() string { return f.Type }
 
+func (f *FileChunk) UnmarshalJSON(data []byte) error {
+	var temp struct {
+		Type     string          `json:"type"`
+		FileURL  json.RawMessage `json:"file_url"`
+		FileName *string         `json:"file_name,omitempty"`
+	}
+
+	if err := json.Unmarshal(data, &temp); err != nil {
+		return err
+	}
+
+	f.Type = temp.Type
+	f.FileName = temp.FileName
+
+	var urlStr string
+	if err := json.Unmarshal(temp.FileURL, &urlStr); err == nil {
+		f.FileURL = FileURLString(urlStr)
+		return nil
+	}
+
+	var urlObj FileURLObject
+	if err := json.Unmarshal(temp.FileURL, &urlObj); err != nil {
+		return err
+	}
+	f.FileURL = urlObj
+	return nil
+}
+
 // FileURL can be either a string URL or an object.
 type FileURL interface {
 	isFileURL()
@@ -181,6 +211,32 @@ func (PDFChunk) isContentChunk() {}
 
 // GetType returns the type of the PDF chunk.
 func (p PDFChunk) GetType() string { return p.Type }
+
+func (p *PDFChunk) UnmarshalJSON(data []byte) error {
+	var temp struct {
+		Type   string          `json:"type"`
+		PDFURL json.RawMessage `json:"pdf_url"`
+	}
+
+	if err := json.Unmarshal(data, &temp); err != nil {
+		return err
+	}
+
+	p.Type = temp.Type
+
+	var urlStr string
+	if err := json.Unmarshal(temp.PDFURL, &urlStr); err == nil {
+		p.PDFURL = PDFURLString(urlStr)
+		return nil
+	}
+
+	var urlObj PDFURLObject
+	if err := json.Unmarshal(temp.PDFURL, &urlObj); err != nil {
+		return err
+	}
+	p.PDFURL = urlObj
+	return nil
+}
 
 // PDFURL can be either a string URL or an object.
 type PDFURL interface {
@@ -215,6 +271,32 @@ func (VideoChunk) isContentChunk() {}
 // GetType returns the type of the video chunk.
 func (v VideoChunk) GetType() string { return v.Type }
 
+func (v *VideoChunk) UnmarshalJSON(data []byte) error {
+	var temp struct {
+		Type     string          `json:"type"`
+		VideoURL json.RawMessage `json:"video_url"`
+	}
+
+	if err := json.Unmarshal(data, &temp); err != nil {
+		return err
+	}
+
+	v.Type = temp.Type
+
+	var urlStr string
+	if err := json.Unmarshal(temp.VideoURL, &urlStr); err == nil {
+		v.VideoURL = VideoURLString(urlStr)
+		return nil
+	}
+
+	var urlObj VideoURLObject
+	if err := json.Unmarshal(temp.VideoURL, &urlObj); err != nil {
+		return err
+	}
+	v.VideoURL = urlObj
+	return nil
+}
+
 // VideoURL can be either a string URL or an object.
 type VideoURL interface {
 	isVideoURL()
@@ -245,6 +327,7 @@ func (m *ChatMessage) UnmarshalJSON(data []byte) error {
 	var temp struct {
 		Role           Role            `json:"role"`
 		Content        json.RawMessage `json:"content"`
+		ToolCallID     *string         `json:"tool_call_id,omitempty"`
 		ReasoningSteps []ReasoningStep `json:"reasoning_steps,omitempty"`
 		ToolCalls      []ToolCall      `json:"tool_calls,omitempty"`
 	}
@@ -254,8 +337,13 @@ func (m *ChatMessage) UnmarshalJSON(data []byte) error {
 	}
 
 	m.Role = temp.Role
+	m.ToolCallID = temp.ToolCallID
 	m.ReasoningSteps = temp.ReasoningSteps
 	m.ToolCalls = temp.ToolCalls
+	if len(temp.Content) == 0 || string(temp.Content) == "null" {
+		m.Content = nil
+		return nil
+	}
 
 	// Try to unmarshal content as a string first
 	var contentStr string

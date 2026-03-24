@@ -1,6 +1,9 @@
 package chat
 
 import (
+	"encoding/json"
+	"fmt"
+
 	"github.com/ZaguanLabs/perplexity-go/perplexity/types"
 )
 
@@ -181,20 +184,40 @@ type CompletionParams struct {
 	PromptTokenLength *int  `json:"_prompt_token_length,omitempty"`
 }
 
-// Stop can be a single string or array of strings.
-type Stop interface {
-	isStop()
+type Stop struct {
+	Text  *string
+	Texts []string
 }
 
-// StopString is a single stop sequence.
-type StopString string
+func (s Stop) MarshalJSON() ([]byte, error) {
+	if s.Text != nil {
+		return json.Marshal(*s.Text)
+	}
+	if s.Texts == nil {
+		return []byte("null"), nil
+	}
+	return json.Marshal(s.Texts)
+}
 
-func (StopString) isStop() {}
-
-// StopArray is multiple stop sequences.
-type StopArray []string
-
-func (StopArray) isStop() {}
+func (s *Stop) UnmarshalJSON(data []byte) error {
+	if len(data) == 0 || string(data) == "null" {
+		*s = Stop{}
+		return nil
+	}
+	var text string
+	if err := json.Unmarshal(data, &text); err == nil {
+		s.Text = &text
+		s.Texts = nil
+		return nil
+	}
+	var texts []string
+	if err := json.Unmarshal(data, &texts); err != nil {
+		return err
+	}
+	s.Text = nil
+	s.Texts = texts
+	return nil
+}
 
 // SearchRecencyFilter specifies how recent search results should be.
 type SearchRecencyFilter string
@@ -288,9 +311,92 @@ const (
 
 // ResponseFormat specifies the format of the response.
 type ResponseFormat struct {
-	Type       ResponseFormatType `json:"type"`
-	JSONSchema *JSONSchema        `json:"json_schema,omitempty"`
-	Regex      *RegexFormat       `json:"regex,omitempty"`
+	value any
+}
+
+func NewResponseFormatText() *ResponseFormat {
+	return &ResponseFormat{value: ResponseFormatText{Type: ResponseFormatTypeText}}
+}
+
+func NewResponseFormatJSONSchema(schema ResponseFormatJSONSchema) *ResponseFormat {
+	return &ResponseFormat{value: schema}
+}
+
+func NewResponseFormatRegex(regex ResponseFormatRegex) *ResponseFormat {
+	return &ResponseFormat{value: regex}
+}
+
+func (r ResponseFormat) MarshalJSON() ([]byte, error) {
+	if r.value == nil {
+		return []byte("null"), nil
+	}
+	return json.Marshal(r.value)
+}
+
+func (r *ResponseFormat) UnmarshalJSON(data []byte) error {
+	if len(data) == 0 || string(data) == "null" {
+		*r = ResponseFormat{}
+		return nil
+	}
+	var envelope struct {
+		Type ResponseFormatType `json:"type"`
+	}
+	if err := json.Unmarshal(data, &envelope); err != nil {
+		return err
+	}
+	var value any
+	switch envelope.Type {
+	case ResponseFormatTypeText:
+		var text ResponseFormatText
+		if err := json.Unmarshal(data, &text); err != nil {
+			return err
+		}
+		value = text
+	case ResponseFormatTypeJSONSchema:
+		var schema ResponseFormatJSONSchema
+		if err := json.Unmarshal(data, &schema); err != nil {
+			return err
+		}
+		value = schema
+	case ResponseFormatTypeRegex:
+		var regex ResponseFormatRegex
+		if err := json.Unmarshal(data, &regex); err != nil {
+			return err
+		}
+		value = regex
+	default:
+		return fmt.Errorf("unknown response_format type %q", envelope.Type)
+	}
+	r.value = value
+	return nil
+}
+
+func (r ResponseFormat) AsText() (*ResponseFormatText, bool) {
+	v, ok := r.value.(ResponseFormatText)
+	if !ok {
+		return nil, false
+	}
+	return &v, true
+}
+
+func (r ResponseFormat) AsJSONSchema() (*ResponseFormatJSONSchema, bool) {
+	v, ok := r.value.(ResponseFormatJSONSchema)
+	if !ok {
+		return nil, false
+	}
+	return &v, true
+}
+
+func (r ResponseFormat) AsRegex() (*ResponseFormatRegex, bool) {
+	v, ok := r.value.(ResponseFormatRegex)
+	if !ok {
+		return nil, false
+	}
+	return &v, true
+}
+
+type ResponseFormatText struct {
+	Type ResponseFormatType `json:"type"`
 }
 
 // ResponseFormatType specifies the type of response format.
@@ -307,14 +413,26 @@ const (
 )
 
 // JSONSchema defines a JSON schema for structured output.
+type ResponseFormatJSONSchema struct {
+	JSONSchema JSONSchema         `json:"json_schema"`
+	Type       ResponseFormatType `json:"type"`
+}
+
 type JSONSchema struct {
-	Name        string                 `json:"name"`
-	Description *string                `json:"description,omitempty"`
 	Schema      map[string]interface{} `json:"schema"`
+	Description *string                `json:"description,omitempty"`
+	Name        *string                `json:"name,omitempty"`
 	Strict      *bool                  `json:"strict,omitempty"`
 }
 
-// RegexFormat defines a regex pattern for output.
+type ResponseFormatRegex struct {
+	Regex RegexFormat        `json:"regex"`
+	Type  ResponseFormatType `json:"type"`
+}
+
 type RegexFormat struct {
-	Pattern string `json:"pattern"`
+	Regex       string  `json:"regex"`
+	Description *string `json:"description,omitempty"`
+	Name        *string `json:"name,omitempty"`
+	Strict      *bool   `json:"strict,omitempty"`
 }

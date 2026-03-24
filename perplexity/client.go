@@ -7,8 +7,12 @@ import (
 	"os"
 
 	"github.com/ZaguanLabs/perplexity-go/perplexity/asyncchat"
+	"github.com/ZaguanLabs/perplexity-go/perplexity/browser"
 	"github.com/ZaguanLabs/perplexity-go/perplexity/chat"
+	"github.com/ZaguanLabs/perplexity-go/perplexity/contextualizedembeddings"
+	"github.com/ZaguanLabs/perplexity-go/perplexity/embeddings"
 	internalhttp "github.com/ZaguanLabs/perplexity-go/perplexity/internal/http"
+	"github.com/ZaguanLabs/perplexity-go/perplexity/responses"
 	"github.com/ZaguanLabs/perplexity-go/perplexity/search"
 )
 
@@ -46,9 +50,13 @@ type Client struct {
 	userAgent      string
 
 	// Services
-	Chat      *chat.Service
-	Search    *search.Service
-	AsyncChat *asyncchat.Service
+	Chat                     *chat.Service
+	Search                   *search.Service
+	AsyncChat                *asyncchat.Service
+	Responses                *responses.Service
+	Embeddings               *embeddings.Service
+	ContextualizedEmbeddings *contextualizedembeddings.Service
+	Browser                  *browser.Service
 }
 
 // NewClient creates a new Perplexity API client.
@@ -68,7 +76,7 @@ func NewClient(apiKey string, opts ...ClientOption) (*Client, error) {
 		baseURL:        DefaultBaseURL,
 		maxRetries:     DefaultMaxRetries,
 		userAgent:      DefaultUserAgent,
-		defaultHeaders: make(map[string]string),
+		defaultHeaders: defaultPlatformHeaders(),
 		httpClient: &http.Client{
 			Timeout: DefaultTimeout,
 		},
@@ -100,6 +108,10 @@ func NewClient(apiKey string, opts ...ClientOption) (*Client, error) {
 	client.Chat = chat.NewService(httpClientWrapper)
 	client.Search = search.NewService(httpClientWrapper)
 	client.AsyncChat = asyncchat.NewService(httpClientWrapper)
+	client.Responses = responses.NewService(httpClientWrapper)
+	client.Embeddings = embeddings.NewService(httpClientWrapper)
+	client.ContextualizedEmbeddings = contextualizedembeddings.NewService(httpClientWrapper)
+	client.Browser = browser.NewService(httpClientWrapper)
 
 	return client, nil
 }

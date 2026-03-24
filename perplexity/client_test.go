@@ -65,6 +65,13 @@ func TestNewClient(t *testing.T) {
 				if client.BaseURL() != DefaultBaseURL {
 					t.Errorf("BaseURL() = %v, want %v", client.BaseURL(), DefaultBaseURL)
 				}
+
+				expectedHeaders := defaultPlatformHeaders()
+				for key, expected := range expectedHeaders {
+					if got := client.defaultHeaders[key]; got != expected {
+						t.Errorf("defaultHeaders[%s] = %q, want %q", key, got, expected)
+					}
+				}
 			}
 		})
 	}

@@ -67,12 +67,12 @@ func (s *Service) List(ctx context.Context) (*CompletionListResponse, error) {
 	return &result, nil
 }
 
-func (s *Service) Get(ctx context.Context, apiRequest string, params *CompletionGetParams) (*CompletionGetResponse, error) {
-	if apiRequest == "" {
-		return nil, fmt.Errorf("apiRequest is required")
+func (s *Service) Get(ctx context.Context, requestID string, params *CompletionGetParams) (*CompletionGetResponse, error) {
+	if requestID == "" {
+		return nil, fmt.Errorf("requestID is required")
 	}
 
-	path := fmt.Sprintf("/async/chat/completions/%s", url.PathEscape(apiRequest))
+	path := fmt.Sprintf("/async/chat/completions/%s", url.PathEscape(requestID))
 	if params != nil && params.LocalMode != nil {
 		q := url.Values{}
 		q.Set("local_mode", fmt.Sprintf("%t", *params.LocalMode))

@@ -12,6 +12,7 @@ import (
 	"math"
 	"net"
 	"net/http"
+	"strconv"
 	"time"
 )
 
@@ -20,7 +21,7 @@ const (
 	InitialRetryDelay = 500 * time.Millisecond
 
 	// MaxRetryDelay is the maximum delay between retries.
-	MaxRetryDelay = 60 * time.Second
+	MaxRetryDelay = 8 * time.Second
 )
 
 type ErrorKind int
@@ -84,14 +85,12 @@ type StreamResponse struct {
 // Do executes an HTTP request with retry logic.
 func (c *Client) Do(ctx context.Context, req *Request) (*Response, error) {
 	var lastErr error
+	var retryDelay time.Duration
 
 	for attempt := 0; attempt <= c.maxRetries; attempt++ {
 		if attempt > 0 {
-			// Calculate backoff delay
-			delay := c.calculateBackoff(attempt)
-
 			select {
-			case <-time.After(delay):
+			case <-time.After(retryDelay):
 				// Continue with retry
 			case <-ctx.Done():
 				return nil, ctx.Err()
@@ -101,20 +100,19 @@ func (c *Client) Do(ctx context.Context, req *Request) (*Response, error) {
 		resp, err := c.doRequest(ctx, req)
 		if err != nil {
 			lastErr = c.wrapTransportError(err)
-			// Check if error is retryable
 			if !c.shouldRetryError(err) {
 				return nil, lastErr
 			}
+			retryDelay = c.calculateBackoff(attempt+1, nil)
 			continue
 		}
 
-		// Check if status code is retryable
-		if c.shouldRetryStatus(resp.StatusCode) {
+		if c.shouldRetryResponse(resp) {
 			lastErr = c.errorFromResponse(resp)
+			retryDelay = c.calculateBackoff(attempt+1, resp.Headers)
 			continue
 		}
 
-		// Success or non-retryable error
 		if resp.StatusCode >= 400 {
 			return nil, c.errorFromResponse(resp)
 		}
@@ -152,8 +150,10 @@ func (c *Client) doRequest(ctx context.Context, req *Request) (*Response, error)
 
 	// Set headers
 	httpReq.Header.Set("Authorization", "Bearer "+c.apiKey)
+	httpReq.Header.Set("Accept", "application/json")
 	httpReq.Header.Set("Content-Type", "application/json")
 	httpReq.Header.Set("User-Agent", c.userAgent)
+	httpReq.Header.Set("X-Stainless-Async", "false")
 
 	// Add default headers
 	for key, value := range c.defaultHeaders {
@@ -205,6 +205,20 @@ func (c *Client) shouldRetryError(err error) bool {
 }
 
 // shouldRetryStatus determines if a status code should trigger a retry.
+
+func (c *Client) shouldRetryResponse(resp *Response) bool {
+	if resp == nil {
+		return false
+	}
+	switch resp.Headers.Get("x-should-retry") {
+	case "true":
+		return true
+	case "false":
+		return false
+	}
+	return c.shouldRetryStatus(resp.StatusCode)
+}
+
 func (c *Client) shouldRetryStatus(statusCode int) bool {
 	switch statusCode {
 	case http.StatusRequestTimeout, // 408
@@ -218,20 +232,19 @@ func (c *Client) shouldRetryStatus(statusCode int) bool {
 }
 
 // calculateBackoff calculates the backoff delay for a given attempt.
-func (c *Client) calculateBackoff(attempt int) time.Duration {
-	// Exponential backoff with jitter
-	delay := InitialRetryDelay * time.Duration(math.Pow(2, float64(attempt-1)))
 
-	// Cap at max delay
+func (c *Client) calculateBackoff(attempt int, headers http.Header) time.Duration {
+	if retryAfter, ok := parseRetryAfter(headers); ok && retryAfter > 0 && retryAfter <= 60*time.Second {
+		return retryAfter
+	}
+
+	delay := InitialRetryDelay * time.Duration(math.Pow(2, float64(attempt-1)))
 	if delay > MaxRetryDelay {
 		delay = MaxRetryDelay
 	}
-
-	// Add jitter (±25%) using crypto/rand for security
 	var randomBytes [8]byte
 	if _, err := rand.Read(randomBytes[:]); err == nil {
 		randomValue := binary.BigEndian.Uint64(randomBytes[:])
-		// Convert to float64 in range [0, 1)
 		randomFloat := float64(randomValue) / float64(^uint64(0))
 		jitter := time.Duration(randomFloat * 0.25 * float64(delay))
 		if randomBytes[0]&1 == 0 {
@@ -242,6 +255,26 @@ func (c *Client) calculateBackoff(attempt int) time.Duration {
 	}
 
 	return delay
+}
+
+func parseRetryAfter(headers http.Header) (time.Duration, bool) {
+	if headers == nil {
+		return 0, false
+	}
+	if retryAfterMS := headers.Get("retry-after-ms"); retryAfterMS != "" {
+		if value, err := strconv.ParseFloat(retryAfterMS, 64); err == nil {
+			return time.Duration(value * float64(time.Millisecond)), true
+		}
+	}
+	if retryAfter := headers.Get("retry-after"); retryAfter != "" {
+		if value, err := strconv.ParseFloat(retryAfter, 64); err == nil {
+			return time.Duration(value * float64(time.Second)), true
+		}
+		if when, err := http.ParseTime(retryAfter); err == nil {
+			return time.Until(when), true
+		}
+	}
+	return 0, false
 }
 
 // errorFromResponse creates an error from an HTTP response.
@@ -317,6 +350,7 @@ func (c *Client) DoStream(ctx context.Context, req *Request) (*StreamResponse, e
 	httpReq.Header.Set("Accept", "text/event-stream")
 	httpReq.Header.Set("Cache-Control", "no-cache")
 	httpReq.Header.Set("Connection", "keep-alive")
+	httpReq.Header.Set("X-Stainless-Async", "false")
 
 	// Add default headers
 	for key, value := range c.defaultHeaders {

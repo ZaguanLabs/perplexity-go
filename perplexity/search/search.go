@@ -27,31 +27,25 @@ func (s *Service) Create(ctx context.Context, params *SearchParams) (*types.Sear
 		return nil, fmt.Errorf("params cannot be nil")
 	}
 
-	// Validate required fields
-	if params.Query == nil {
+	if params.Query.Text == nil && len(params.Query.Texts) == 0 {
 		return nil, fmt.Errorf("query is required")
 	}
 
-	// Validate query type
-	switch q := params.Query.(type) {
-	case string:
-		if q == "" {
+	if params.Query.Text != nil {
+		if *params.Query.Text == "" {
 			return nil, fmt.Errorf("query cannot be empty")
 		}
-	case []string:
-		if len(q) == 0 {
+	} else {
+		if len(params.Query.Texts) == 0 {
 			return nil, fmt.Errorf("query cannot be empty")
 		}
-		for i, query := range q {
+		for i, query := range params.Query.Texts {
 			if query == "" {
 				return nil, fmt.Errorf("query[%d] cannot be empty", i)
 			}
 		}
-	default:
-		return nil, fmt.Errorf("query must be string or []string, got %T", params.Query)
 	}
 
-	// Make the request
 	req := &http.Request{
 		Method: "POST",
 		Path:   "/search",

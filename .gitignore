@@ -53,3 +53,7 @@ go.work.sum
 *.egg-info/
 dist/
 build/
+
+# Docs
+docs/perplexity-py*
+docs/*.tar.gz

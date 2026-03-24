@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.0] - 2026-03-24
+
+### Added
+- Added the `Responses`, `Embeddings`, `ContextualizedEmbeddings`, and `Browser` services to the public SDK surface with client-level initialization coverage.
+- Added focused service and model tests for `asyncchat`, shared chat message unions, retry semantics, and typed error mapping.
+- Added default `X-Stainless-*` platform metadata headers to align client transport metadata with the official Python SDK.
+
+### Changed
+- Refined shared chat content modeling to support Python-parity unions for `content`, `file_url`, `pdf_url`, and `video_url` fields.
+- Tightened retry behavior to honor `x-should-retry`, `retry-after-ms`, and `retry-after` headers with capped exponential backoff and jitter.
+- Updated examples and strict query handling to match the current typed `search.Query` API.
+
+### Fixed
+- Fixed compile fallout in `examples/search/main.go` after the stricter `search.Query` union was introduced.
+- Fixed async chat request ID naming inconsistencies and expanded validation coverage across services.
+
 ## [1.0.4] - 2025-12-18
 
 ### Fixed
@@ -247,6 +263,7 @@ See [README.md](README.md) for full documentation.
 
 ---
 
+[1.1.0]: https://github.com/ZaguanLabs/perplexity-go/releases/tag/v1.1.0
 [1.0.4]: https://github.com/ZaguanLabs/perplexity-go/releases/tag/v1.0.4
 [1.0.3]: https://github.com/ZaguanLabs/perplexity-go/releases/tag/v1.0.3
 [1.0.2]: https://github.com/ZaguanLabs/perplexity-go/releases/tag/v1.0.2
