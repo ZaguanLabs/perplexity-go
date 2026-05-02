@@ -5,6 +5,25 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.0] - 2026-05-02
+
+### Added
+- Added the `perplexity/api` package with reusable per-request options for headers, query parameters, extra JSON body fields, and request timeouts.
+- Added `api.RawResponse[T]` and raw response helper methods across chat, search, responses, embeddings, contextualized embeddings, async chat, and browser sessions.
+- Added `Client.Copy()` and `Client.WithOptions()` for Python SDK-style client cloning with option overrides.
+- Added `WithDefaultQuery()`, `WithDefaultQueryParams()`, and `WithDefaultHeaders()` client options.
+- Added request option support across public resource methods while preserving existing call compatibility.
+- Added tests for request options, default query propagation, extra body merging, and client copy behavior.
+
+### Changed
+- Updated SDK version to `1.2.0`.
+- Extended internal HTTP transport behavior to merge default query parameters, request-level query parameters, per-request query parameters, and extra JSON body fields.
+- Extended streaming requests to support per-request headers, query parameters, extra body fields, and timeouts.
+
+### Fixed
+- Added missing `last_updated_after_filter` and `last_updated_before_filter` fields to `search.SearchParams` for parity with the official Python SDK.
+- Added JSON round-trip coverage for the new search last-updated filter fields.
+
 ## [1.1.0] - 2026-03-24
 
 ### Added
@@ -263,6 +282,7 @@ See [README.md](README.md) for full documentation.
 
 ---
 
+[1.2.0]: https://github.com/ZaguanLabs/perplexity-go/releases/tag/v1.2.0
 [1.1.0]: https://github.com/ZaguanLabs/perplexity-go/releases/tag/v1.1.0
 [1.0.4]: https://github.com/ZaguanLabs/perplexity-go/releases/tag/v1.0.4
 [1.0.3]: https://github.com/ZaguanLabs/perplexity-go/releases/tag/v1.0.3

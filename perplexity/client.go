@@ -47,6 +47,7 @@ type Client struct {
 	httpClient     *http.Client
 	maxRetries     int
 	defaultHeaders map[string]string
+	defaultQuery   map[string]any
 	userAgent      string
 
 	// Services
@@ -93,32 +94,83 @@ func NewClient(apiKey string, opts ...ClientOption) (*Client, error) {
 		}
 	}
 
-	// Initialize internal HTTP client
-	httpClientWrapper := internalhttp.NewClient(
-		client.httpClient,
-		client.baseURL,
-		client.apiKey,
-		client.maxRetries,
-		client.defaultHeaders,
-		client.userAgent,
-		clientErrorFactory,
-	)
-
-	// Initialize services
-	client.Chat = chat.NewService(httpClientWrapper)
-	client.Search = search.NewService(httpClientWrapper)
-	client.AsyncChat = asyncchat.NewService(httpClientWrapper)
-	client.Responses = responses.NewService(httpClientWrapper)
-	client.Embeddings = embeddings.NewService(httpClientWrapper)
-	client.ContextualizedEmbeddings = contextualizedembeddings.NewService(httpClientWrapper)
-	client.Browser = browser.NewService(httpClientWrapper)
+	client.initServices()
 
 	return client, nil
+}
+
+func (c *Client) initServices() {
+	httpClientWrapper := internalhttp.NewClient(
+		c.httpClient,
+		c.baseURL,
+		c.apiKey,
+		c.maxRetries,
+		c.defaultHeaders,
+		c.userAgent,
+		clientErrorFactory,
+	)
+	httpClientWrapper.SetDefaultQuery(c.defaultQuery)
+
+	c.Chat = chat.NewService(httpClientWrapper)
+	c.Search = search.NewService(httpClientWrapper)
+	c.AsyncChat = asyncchat.NewService(httpClientWrapper)
+	c.Responses = responses.NewService(httpClientWrapper)
+	c.Embeddings = embeddings.NewService(httpClientWrapper)
+	c.ContextualizedEmbeddings = contextualizedembeddings.NewService(httpClientWrapper)
+	c.Browser = browser.NewService(httpClientWrapper)
 }
 
 // APIKey returns the API key being used by the client.
 func (c *Client) APIKey() string {
 	return c.apiKey
+}
+
+func (c *Client) Copy(opts ...ClientOption) (*Client, error) {
+	if c == nil {
+		return nil, errors.New("perplexity: cannot copy nil client")
+	}
+	copyClient := &Client{
+		apiKey:         c.apiKey,
+		baseURL:        c.baseURL,
+		httpClient:     c.httpClient,
+		maxRetries:     c.maxRetries,
+		defaultHeaders: cloneStringMap(c.defaultHeaders),
+		defaultQuery:   cloneAnyMap(c.defaultQuery),
+		userAgent:      c.userAgent,
+	}
+	for _, opt := range opts {
+		if err := opt(copyClient); err != nil {
+			return nil, fmt.Errorf("perplexity: failed to apply option: %w", err)
+		}
+	}
+	copyClient.initServices()
+	return copyClient, nil
+}
+
+func (c *Client) WithOptions(opts ...ClientOption) (*Client, error) {
+	return c.Copy(opts...)
+}
+
+func cloneStringMap(input map[string]string) map[string]string {
+	if input == nil {
+		return nil
+	}
+	output := make(map[string]string, len(input))
+	for key, value := range input {
+		output[key] = value
+	}
+	return output
+}
+
+func cloneAnyMap(input map[string]any) map[string]any {
+	if input == nil {
+		return nil
+	}
+	output := make(map[string]any, len(input))
+	for key, value := range input {
+		output[key] = value
+	}
+	return output
 }
 
 // BaseURL returns the base URL being used by the client.

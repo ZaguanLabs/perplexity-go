@@ -72,3 +72,37 @@ func WithDefaultHeader(key, value string) ClientOption {
 		return nil
 	}
 }
+
+func WithDefaultHeaders(headers map[string]string) ClientOption {
+	return func(c *Client) error {
+		if c.defaultHeaders == nil {
+			c.defaultHeaders = make(map[string]string, len(headers))
+		}
+		for key, value := range headers {
+			c.defaultHeaders[key] = value
+		}
+		return nil
+	}
+}
+
+func WithDefaultQuery(key string, value any) ClientOption {
+	return func(c *Client) error {
+		if c.defaultQuery == nil {
+			c.defaultQuery = make(map[string]any)
+		}
+		c.defaultQuery[key] = value
+		return nil
+	}
+}
+
+func WithDefaultQueryParams(query map[string]any) ClientOption {
+	return func(c *Client) error {
+		if c.defaultQuery == nil {
+			c.defaultQuery = make(map[string]any, len(query))
+		}
+		for key, value := range query {
+			c.defaultQuery[key] = value
+		}
+		return nil
+	}
+}

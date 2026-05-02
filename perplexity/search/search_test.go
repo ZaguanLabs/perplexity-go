@@ -203,12 +203,14 @@ func TestSearchParams_QueryHelpers(t *testing.T) {
 
 func TestSearchParams_JSON(t *testing.T) {
 	params := &SearchParams{
-		Query:                Query{Text: types.String("golang")},
-		MaxResults:           types.Int(10),
-		Country:              types.String("US"),
-		DisplayServerTime:    types.Bool(true),
-		SearchDomainFilter:   []string{"golang.org", "go.dev"},
-		SearchLanguageFilter: []string{"en"},
+		Query:                   Query{Text: types.String("golang")},
+		MaxResults:              types.Int(10),
+		Country:                 types.String("US"),
+		DisplayServerTime:       types.Bool(true),
+		LastUpdatedAfterFilter:  types.String("01/01/2024"),
+		LastUpdatedBeforeFilter: types.String("12/31/2024"),
+		SearchDomainFilter:      []string{"golang.org", "go.dev"},
+		SearchLanguageFilter:    []string{"en"},
 	}
 
 	// Marshal
@@ -229,6 +231,12 @@ func TestSearchParams_JSON(t *testing.T) {
 	}
 	if result.MaxResults == nil || *result.MaxResults != 10 {
 		t.Error("MaxResults mismatch")
+	}
+	if result.LastUpdatedAfterFilter == nil || *result.LastUpdatedAfterFilter != "01/01/2024" {
+		t.Error("LastUpdatedAfterFilter mismatch")
+	}
+	if result.LastUpdatedBeforeFilter == nil || *result.LastUpdatedBeforeFilter != "12/31/2024" {
+		t.Error("LastUpdatedBeforeFilter mismatch")
 	}
 	if len(result.SearchDomainFilter) != 2 {
 		t.Errorf("SearchDomainFilter length = %d, want 2", len(result.SearchDomainFilter))

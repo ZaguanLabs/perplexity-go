@@ -3,7 +3,7 @@ package perplexity
 import "runtime"
 
 // Version is the current version of the SDK.
-const Version = "1.1.0"
+const Version = "1.2.0"
 
 // UserAgent returns the default User-Agent string for the SDK.
 func UserAgent() string {

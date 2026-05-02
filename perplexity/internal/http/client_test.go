@@ -11,6 +11,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/ZaguanLabs/perplexity-go/perplexity/api"
 )
 
 func TestNewClient(t *testing.T) {
@@ -509,5 +511,54 @@ func TestClient_ErrorResponse(t *testing.T) {
 	}
 	if !strings.Contains(errMsg, "err-123") {
 		t.Errorf("Error should contain request ID: %v", errMsg)
+	}
+}
+
+func TestClient_RequestOptionsAndDefaultQuery(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if got := r.URL.Query().Get("default"); got != "yes" {
+			t.Errorf("default query = %q, want yes", got)
+		}
+		if got := r.URL.Query().Get("request"); got != "one,two" {
+			t.Errorf("request query = %q, want one,two", got)
+		}
+		if got := r.URL.Query().Get("extra"); got != "true" {
+			t.Errorf("extra query = %q, want true", got)
+		}
+		if got := r.Header.Get("X-Option"); got != "enabled" {
+			t.Errorf("X-Option = %q, want enabled", got)
+		}
+		var body map[string]any
+		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+			t.Fatalf("decode body: %v", err)
+		}
+		if got := body["base"]; got != "value" {
+			t.Errorf("base body = %v, want value", got)
+		}
+		if got := body["extra"]; got != "field" {
+			t.Errorf("extra body = %v, want field", got)
+		}
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer server.Close()
+
+	client := NewClient(server.Client(), server.URL, "test-key", 0, nil, "test-agent", nil)
+	client.SetDefaultQuery(map[string]any{"default": "yes"})
+
+	req := &Request{
+		Method: "POST",
+		Path:   "/test",
+		Query:  map[string]any{"request": []string{"one", "two"}},
+		Body:   map[string]any{"base": "value"},
+		Options: api.ApplyRequestOptions([]api.RequestOption{
+			api.WithHeader("X-Option", "enabled"),
+			api.WithQuery("extra", true),
+			api.WithExtraBody("extra", "field"),
+			api.WithTimeout(time.Second),
+		}),
+	}
+
+	if _, err := client.Do(context.Background(), req); err != nil {
+		t.Fatalf("Do() error = %v", err)
 	}
 }

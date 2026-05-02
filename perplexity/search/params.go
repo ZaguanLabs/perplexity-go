@@ -60,6 +60,10 @@ type SearchParams struct {
 	// MaxTokensPerPage is the maximum tokens per page (optional).
 	MaxTokensPerPage *int `json:"max_tokens_per_page,omitempty"`
 
+	LastUpdatedAfterFilter *string `json:"last_updated_after_filter,omitempty"`
+
+	LastUpdatedBeforeFilter *string `json:"last_updated_before_filter,omitempty"`
+
 	// SearchAfterDateFilter filters results after this date (optional).
 	SearchAfterDateFilter *string `json:"search_after_date_filter,omitempty"`
 

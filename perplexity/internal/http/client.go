@@ -12,8 +12,13 @@ import (
 	"math"
 	"net"
 	"net/http"
+	"net/url"
+	"reflect"
 	"strconv"
+	"strings"
 	"time"
+
+	"github.com/ZaguanLabs/perplexity-go/perplexity/api"
 )
 
 const (
@@ -41,6 +46,7 @@ type Client struct {
 	apiKey         string
 	maxRetries     int
 	defaultHeaders map[string]string
+	defaultQuery   map[string]any
 	userAgent      string
 	errorFactory   ErrorFactory
 }
@@ -58,12 +64,18 @@ func NewClient(httpClient *http.Client, baseURL, apiKey string, maxRetries int, 
 	}
 }
 
+func (c *Client) SetDefaultQuery(defaultQuery map[string]any) {
+	c.defaultQuery = defaultQuery
+}
+
 // Request represents an HTTP request.
 type Request struct {
 	Method  string
 	Path    string
 	Headers map[string]string
+	Query   map[string]any
 	Body    interface{}
+	Options api.RequestOptions
 }
 
 // Response represents an HTTP response.
@@ -129,56 +141,62 @@ func (c *Client) Do(ctx context.Context, req *Request) (*Response, error) {
 
 // doRequest performs a single HTTP request.
 func (c *Client) doRequest(ctx context.Context, req *Request) (*Response, error) {
-	// Build URL
-	url := c.baseURL + req.Path
+	requestURL, err := c.buildURL(req)
+	if err != nil {
+		return nil, err
+	}
 
-	// Marshal body if present
 	var bodyReader io.Reader
 	if req.Body != nil {
-		bodyBytes, err := json.Marshal(req.Body)
+		body, err := mergeExtraBody(req.Body, req.Options.ExtraBody)
+		if err != nil {
+			return nil, err
+		}
+		bodyBytes, err := json.Marshal(body)
 		if err != nil {
 			return nil, fmt.Errorf("failed to marshal request body: %w", err)
 		}
 		bodyReader = bytes.NewReader(bodyBytes)
 	}
 
-	// Create HTTP request
-	httpReq, err := http.NewRequestWithContext(ctx, req.Method, url, bodyReader)
+	requestCtx := ctx
+	var cancel context.CancelFunc
+	if req.Options.Timeout > 0 {
+		requestCtx, cancel = context.WithTimeout(ctx, req.Options.Timeout)
+		defer cancel()
+	}
+	httpReq, err := http.NewRequestWithContext(requestCtx, req.Method, requestURL, bodyReader)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create request: %w", err)
 	}
 
-	// Set headers
 	httpReq.Header.Set("Authorization", "Bearer "+c.apiKey)
 	httpReq.Header.Set("Accept", "application/json")
 	httpReq.Header.Set("Content-Type", "application/json")
 	httpReq.Header.Set("User-Agent", c.userAgent)
 	httpReq.Header.Set("X-Stainless-Async", "false")
 
-	// Add default headers
 	for key, value := range c.defaultHeaders {
 		httpReq.Header.Set(key, value)
 	}
-
-	// Add request-specific headers
 	for key, value := range req.Headers {
 		httpReq.Header.Set(key, value)
 	}
+	for key, value := range req.Options.Headers {
+		httpReq.Header.Set(key, value)
+	}
 
-	// Execute request
 	httpResp, err := c.httpClient.Do(httpReq)
 	if err != nil {
 		return nil, fmt.Errorf("request failed: %w", err)
 	}
 	defer httpResp.Body.Close()
 
-	// Read response body
 	body, err := io.ReadAll(httpResp.Body)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read response body: %w", err)
 	}
 
-	// Extract request ID from headers
 	requestID := httpResp.Header.Get("X-Request-Id")
 	if requestID == "" {
 		requestID = httpResp.Header.Get("X-Request-ID")
@@ -324,26 +342,35 @@ func (c *Client) wrapTransportError(err error) error {
 // DoStream executes a streaming HTTP request.
 // The caller is responsible for closing the response body.
 func (c *Client) DoStream(ctx context.Context, req *Request) (*StreamResponse, error) {
-	// Build URL
-	url := c.baseURL + req.Path
+	requestURL, err := c.buildURL(req)
+	if err != nil {
+		return nil, err
+	}
 
-	// Marshal body if present
 	var bodyReader io.Reader
 	if req.Body != nil {
-		bodyBytes, err := json.Marshal(req.Body)
+		body, err := mergeExtraBody(req.Body, req.Options.ExtraBody)
+		if err != nil {
+			return nil, err
+		}
+		bodyBytes, err := json.Marshal(body)
 		if err != nil {
 			return nil, fmt.Errorf("failed to marshal request body: %w", err)
 		}
 		bodyReader = bytes.NewReader(bodyBytes)
 	}
 
-	// Create HTTP request
-	httpReq, err := http.NewRequestWithContext(ctx, req.Method, url, bodyReader)
+	requestCtx := ctx
+	var cancel context.CancelFunc
+	if req.Options.Timeout > 0 {
+		requestCtx, cancel = context.WithTimeout(ctx, req.Options.Timeout)
+		defer cancel()
+	}
+	httpReq, err := http.NewRequestWithContext(requestCtx, req.Method, requestURL, bodyReader)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create request: %w", err)
 	}
 
-	// Set headers
 	httpReq.Header.Set("Authorization", "Bearer "+c.apiKey)
 	httpReq.Header.Set("Content-Type", "application/json")
 	httpReq.Header.Set("User-Agent", c.userAgent)
@@ -352,17 +379,16 @@ func (c *Client) DoStream(ctx context.Context, req *Request) (*StreamResponse, e
 	httpReq.Header.Set("Connection", "keep-alive")
 	httpReq.Header.Set("X-Stainless-Async", "false")
 
-	// Add default headers
 	for key, value := range c.defaultHeaders {
 		httpReq.Header.Set(key, value)
 	}
-
-	// Add request-specific headers
 	for key, value := range req.Headers {
 		httpReq.Header.Set(key, value)
 	}
+	for key, value := range req.Options.Headers {
+		httpReq.Header.Set(key, value)
+	}
 
-	// Execute request
 	httpResp, err := c.httpClient.Do(httpReq)
 	if err != nil {
 		return nil, c.wrapTransportError(err)
@@ -413,4 +439,70 @@ func (c *Client) DoStream(ctx context.Context, req *Request) (*StreamResponse, e
 		Response:   httpResp,
 		RequestID:  requestID,
 	}, nil
+}
+
+func (c *Client) buildURL(req *Request) (string, error) {
+	requestURL, err := url.Parse(c.baseURL + req.Path)
+	if err != nil {
+		return "", fmt.Errorf("failed to build request URL: %w", err)
+	}
+	values := requestURL.Query()
+	addQueryValues(values, c.defaultQuery)
+	addQueryValues(values, req.Query)
+	addQueryValues(values, req.Options.Query)
+	requestURL.RawQuery = values.Encode()
+	return requestURL.String(), nil
+}
+
+func addQueryValues(values url.Values, query map[string]any) {
+	for key, value := range query {
+		if value == nil {
+			continue
+		}
+		addQueryValue(values, key, reflect.ValueOf(value))
+	}
+}
+
+func addQueryValue(values url.Values, key string, value reflect.Value) {
+	if !value.IsValid() {
+		return
+	}
+	if value.Kind() == reflect.Pointer || value.Kind() == reflect.Interface {
+		if value.IsNil() {
+			return
+		}
+		addQueryValue(values, key, value.Elem())
+		return
+	}
+	switch value.Kind() {
+	case reflect.Slice, reflect.Array:
+		parts := make([]string, 0, value.Len())
+		for i := 0; i < value.Len(); i++ {
+			parts = append(parts, fmt.Sprint(value.Index(i).Interface()))
+		}
+		values.Set(key, strings.Join(parts, ","))
+	default:
+		values.Set(key, fmt.Sprint(value.Interface()))
+	}
+}
+
+func mergeExtraBody(body any, extra map[string]any) (any, error) {
+	if len(extra) == 0 {
+		return body, nil
+	}
+	bodyBytes, err := json.Marshal(body)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal request body for extra fields: %w", err)
+	}
+	var merged map[string]any
+	if err := json.Unmarshal(bodyBytes, &merged); err != nil {
+		return nil, fmt.Errorf("extra body fields require a JSON object request body: %w", err)
+	}
+	if merged == nil {
+		merged = make(map[string]any, len(extra))
+	}
+	for key, value := range extra {
+		merged[key] = value
+	}
+	return merged, nil
 }

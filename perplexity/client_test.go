@@ -125,6 +125,17 @@ func TestClientOptions(t *testing.T) {
 		}
 	})
 
+	t.Run("WithDefaultQuery", func(t *testing.T) {
+		client, err := NewClient("test-key", WithDefaultQuery("debug", true))
+		if err != nil {
+			t.Fatalf("NewClient() error = %v", err)
+		}
+
+		if client.defaultQuery["debug"] != true {
+			t.Errorf("defaultQuery[debug] = %v, want true", client.defaultQuery["debug"])
+		}
+	})
+
 	t.Run("multiple options", func(t *testing.T) {
 		customURL := "https://custom.api.com"
 		timeout := 30 * time.Second
@@ -149,6 +160,45 @@ func TestClientOptions(t *testing.T) {
 			t.Errorf("maxRetries = %v, want %v", client.maxRetries, maxRetries)
 		}
 	})
+}
+
+func TestClient_CopyWithOptions(t *testing.T) {
+	client, err := NewClient("test-key",
+		WithBaseURL("https://original.example.com"),
+		WithDefaultHeader("X-Original", "yes"),
+		WithDefaultQuery("original", "yes"),
+	)
+	if err != nil {
+		t.Fatalf("NewClient() error = %v", err)
+	}
+
+	copied, err := client.WithOptions(
+		WithBaseURL("https://copy.example.com"),
+		WithDefaultHeader("X-Copy", "yes"),
+		WithDefaultQuery("copy", "yes"),
+	)
+	if err != nil {
+		t.Fatalf("WithOptions() error = %v", err)
+	}
+
+	if client.BaseURL() != "https://original.example.com" {
+		t.Errorf("original BaseURL = %v", client.BaseURL())
+	}
+	if copied.BaseURL() != "https://copy.example.com" {
+		t.Errorf("copied BaseURL = %v", copied.BaseURL())
+	}
+	if copied.defaultHeaders["X-Original"] != "yes" || copied.defaultHeaders["X-Copy"] != "yes" {
+		t.Errorf("copied defaultHeaders = %#v", copied.defaultHeaders)
+	}
+	if client.defaultHeaders["X-Copy"] != "" {
+		t.Errorf("original unexpectedly has X-Copy header")
+	}
+	if copied.defaultQuery["original"] != "yes" || copied.defaultQuery["copy"] != "yes" {
+		t.Errorf("copied defaultQuery = %#v", copied.defaultQuery)
+	}
+	if _, ok := client.defaultQuery["copy"]; ok {
+		t.Errorf("original unexpectedly has copy query")
+	}
 }
 
 func TestClient_Version(t *testing.T) {
