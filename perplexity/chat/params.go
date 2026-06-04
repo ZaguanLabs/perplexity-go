@@ -180,7 +180,6 @@ type CompletionParams struct {
 	// Internal/debug parameters (optional, not recommended for general use)
 	DebugProSearch    *bool `json:"_debug_pro_search,omitempty"`
 	Inputs            []int `json:"_inputs,omitempty"`
-	IsBrowserAgent    *bool `json:"_is_browser_agent,omitempty"`
 	PromptTokenLength *int  `json:"_prompt_token_length,omitempty"`
 }
 
@@ -285,8 +284,11 @@ type WebSearchOptions struct {
 
 // UserLocation specifies user's geographic location.
 type UserLocation struct {
-	Latitude  float64 `json:"latitude"`
-	Longitude float64 `json:"longitude"`
+	City      *string  `json:"city,omitempty"`
+	Country   *string  `json:"country,omitempty"`
+	Latitude  *float64 `json:"latitude,omitempty"`
+	Longitude *float64 `json:"longitude,omitempty"`
+	Region    *string  `json:"region,omitempty"`
 }
 
 // SearchContextSize specifies the size of the search context.

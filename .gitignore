@@ -55,5 +55,6 @@ dist/
 build/
 
 # Docs
+docs/perplexity-py/
 docs/perplexity-py*
 docs/*.tar.gz

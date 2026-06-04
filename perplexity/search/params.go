@@ -70,6 +70,9 @@ type SearchParams struct {
 	// SearchBeforeDateFilter filters results before this date (optional).
 	SearchBeforeDateFilter *string `json:"search_before_date_filter,omitempty"`
 
+	// SearchContextSize controls how much content is retrieved per result (optional).
+	SearchContextSize *chat.SearchContextSize `json:"search_context_size,omitempty"`
+
 	// SearchDomainFilter limits search to specific domains (optional).
 	SearchDomainFilter []string `json:"search_domain_filter,omitempty"`
 
@@ -81,7 +84,17 @@ type SearchParams struct {
 
 	// SearchRecencyFilter filters by recency (optional).
 	SearchRecencyFilter *chat.SearchRecencyFilter `json:"search_recency_filter,omitempty"`
+
+	// SearchType selects general web or people search (optional).
+	SearchType *SearchType `json:"search_type,omitempty"`
 }
+
+type SearchType string
+
+const (
+	SearchTypeWeb    SearchType = "web"
+	SearchTypePeople SearchType = "people"
+)
 
 // QueryString sets a single query string.
 func (p *SearchParams) QueryString(query string) {

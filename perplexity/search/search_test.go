@@ -7,6 +7,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"github.com/ZaguanLabs/perplexity-go/perplexity/chat"
 	internalhttp "github.com/ZaguanLabs/perplexity-go/perplexity/internal/http"
 	"github.com/ZaguanLabs/perplexity-go/perplexity/types"
 )
@@ -209,8 +210,10 @@ func TestSearchParams_JSON(t *testing.T) {
 		DisplayServerTime:       types.Bool(true),
 		LastUpdatedAfterFilter:  types.String("01/01/2024"),
 		LastUpdatedBeforeFilter: types.String("12/31/2024"),
+		SearchContextSize:       func() *chat.SearchContextSize { v := chat.SearchContextSizeHigh; return &v }(),
 		SearchDomainFilter:      []string{"golang.org", "go.dev"},
 		SearchLanguageFilter:    []string{"en"},
+		SearchType:              func() *SearchType { v := SearchTypePeople; return &v }(),
 	}
 
 	// Marshal
@@ -240,5 +243,11 @@ func TestSearchParams_JSON(t *testing.T) {
 	}
 	if len(result.SearchDomainFilter) != 2 {
 		t.Errorf("SearchDomainFilter length = %d, want 2", len(result.SearchDomainFilter))
+	}
+	if result.SearchContextSize == nil || *result.SearchContextSize != chat.SearchContextSizeHigh {
+		t.Error("SearchContextSize mismatch")
+	}
+	if result.SearchType == nil || *result.SearchType != SearchTypePeople {
+		t.Error("SearchType mismatch")
 	}
 }

@@ -22,6 +22,8 @@ type InputItemType string
 
 type ToolType string
 
+type SearchContextSize string
+
 type OutputItemType string
 
 type ResponseFormatType string
@@ -36,11 +38,15 @@ const (
 	StatusCompleted      Status = "completed"
 	StatusFailed         Status = "failed"
 	StatusInProgress     Status = "in_progress"
+	StatusQueued         Status = "queued"
+	StatusCancelled      Status = "cancelled"
 	StatusRequiresAction Status = "requires_action"
 
-	ReasoningEffortLow    ReasoningEffort = "low"
-	ReasoningEffortMedium ReasoningEffort = "medium"
-	ReasoningEffortHigh   ReasoningEffort = "high"
+	ReasoningEffortMinimal ReasoningEffort = "minimal"
+	ReasoningEffortLow     ReasoningEffort = "low"
+	ReasoningEffortMedium  ReasoningEffort = "medium"
+	ReasoningEffortHigh    ReasoningEffort = "high"
+	ReasoningEffortXHigh   ReasoningEffort = "xhigh"
 
 	EventTypeResponseCreated          EventType = "response.created"
 	EventTypeResponseInProgress       EventType = "response.in_progress"
@@ -71,9 +77,16 @@ const (
 	InputItemTypeFunctionCall       InputItemType = "function_call"
 	InputItemTypeFunctionCallOutput InputItemType = "function_call_output"
 
-	ToolTypeWebSearch ToolType = "web_search"
-	ToolTypeFetchURL  ToolType = "fetch_url"
-	ToolTypeFunction  ToolType = "function"
+	ToolTypeWebSearch     ToolType = "web_search"
+	ToolTypeFetchURL      ToolType = "fetch_url"
+	ToolTypeFunction      ToolType = "function"
+	ToolTypePeopleSearch  ToolType = "people_search"
+	ToolTypeFinanceSearch ToolType = "finance_search"
+	ToolTypeSandbox       ToolType = "sandbox"
+
+	SearchContextSizeLow    SearchContextSize = "low"
+	SearchContextSizeMedium SearchContextSize = "medium"
+	SearchContextSizeHigh   SearchContextSize = "high"
 
 	OutputItemTypeMessage         OutputItemType = "message"
 	OutputItemTypeSearchResults   OutputItemType = "search_results"
@@ -262,16 +275,29 @@ type UserLocation struct {
 }
 
 type WebSearchTool struct {
-	Type             ToolType              `json:"type"`
-	Filters          *WebSearchToolFilters `json:"filters,omitempty"`
-	MaxTokens        *int                  `json:"max_tokens,omitempty"`
-	MaxTokensPerPage *int                  `json:"max_tokens_per_page,omitempty"`
-	UserLocation     *UserLocation         `json:"user_location,omitempty"`
+	Type              ToolType              `json:"type"`
+	Filters           *WebSearchToolFilters `json:"filters,omitempty"`
+	MaxTokens         *int                  `json:"max_tokens,omitempty"`
+	MaxTokensPerPage  *int                  `json:"max_tokens_per_page,omitempty"`
+	SearchContextSize *SearchContextSize    `json:"search_context_size,omitempty"`
+	UserLocation      *UserLocation         `json:"user_location,omitempty"`
 }
 
 type FetchURLTool struct {
 	Type    ToolType `json:"type"`
 	MaxURLs *int     `json:"max_urls,omitempty"`
+}
+
+type PeopleSearchTool struct {
+	Type ToolType `json:"type"`
+}
+
+type FinanceSearchTool struct {
+	Type ToolType `json:"type"`
+}
+
+type SandboxTool struct {
+	Type ToolType `json:"type"`
 }
 
 type FunctionTool struct {
@@ -292,15 +318,24 @@ func NewToolFromFetchURL(v FetchURLTool) Tool { return Tool{value: v} }
 
 func NewToolFromFunction(v FunctionTool) Tool { return Tool{value: v} }
 
+func NewToolFromPeopleSearch(v PeopleSearchTool) Tool { return Tool{value: v} }
+
+func NewToolFromFinanceSearch(v FinanceSearchTool) Tool { return Tool{value: v} }
+
+func NewToolFromSandbox(v SandboxTool) Tool { return Tool{value: v} }
+
 func (t Tool) MarshalJSON() ([]byte, error) {
 	return marshalUnionValue(t.value)
 }
 
 func (t *Tool) UnmarshalJSON(data []byte) error {
 	variant, err := unmarshalByTypeField(data, map[string]func() any{
-		string(ToolTypeWebSearch): func() any { return &WebSearchTool{} },
-		string(ToolTypeFetchURL):  func() any { return &FetchURLTool{} },
-		string(ToolTypeFunction):  func() any { return &FunctionTool{} },
+		string(ToolTypeWebSearch):     func() any { return &WebSearchTool{} },
+		string(ToolTypeFetchURL):      func() any { return &FetchURLTool{} },
+		string(ToolTypeFunction):      func() any { return &FunctionTool{} },
+		string(ToolTypePeopleSearch):  func() any { return &PeopleSearchTool{} },
+		string(ToolTypeFinanceSearch): func() any { return &FinanceSearchTool{} },
+		string(ToolTypeSandbox):       func() any { return &SandboxTool{} },
 	})
 	if err != nil {
 		return err
@@ -333,6 +368,30 @@ func (t Tool) AsFunction() (*FunctionTool, bool) {
 	return nil, false
 }
 
+func (t Tool) AsPeopleSearch() (*PeopleSearchTool, bool) {
+	v, ok := t.value.(PeopleSearchTool)
+	if ok {
+		return &v, true
+	}
+	return nil, false
+}
+
+func (t Tool) AsFinanceSearch() (*FinanceSearchTool, bool) {
+	v, ok := t.value.(FinanceSearchTool)
+	if ok {
+		return &v, true
+	}
+	return nil, false
+}
+
+func (t Tool) AsSandbox() (*SandboxTool, bool) {
+	v, ok := t.value.(SandboxTool)
+	if ok {
+		return &v, true
+	}
+	return nil, false
+}
+
 type JSONSchemaFormat struct {
 	Name        string         `json:"name"`
 	Schema      map[string]any `json:"schema"`
@@ -347,6 +406,7 @@ type ResponseFormat struct {
 
 type CreateParams struct {
 	Input              Input           `json:"input"`
+	Background         *bool           `json:"background,omitempty"`
 	Instructions       *string         `json:"instructions,omitempty"`
 	LanguagePreference *string         `json:"language_preference,omitempty"`
 	MaxOutputTokens    *int            `json:"max_output_tokens,omitempty"`
@@ -520,15 +580,18 @@ func (o OutputItem) AsFunctionCall() (*FunctionCallOutputItem, bool) {
 }
 
 type CreateResponse struct {
-	ID        string       `json:"id"`
-	CreatedAt int64        `json:"created_at"`
-	Model     string       `json:"model"`
-	Object    string       `json:"object"`
-	Output    []OutputItem `json:"output"`
-	Status    Status       `json:"status"`
-	Error     *ErrorInfo   `json:"error,omitempty"`
-	Usage     *Usage       `json:"usage,omitempty"`
+	ID         string       `json:"id"`
+	CreatedAt  int64        `json:"created_at"`
+	Model      string       `json:"model"`
+	Object     string       `json:"object"`
+	Output     []OutputItem `json:"output"`
+	Status     Status       `json:"status"`
+	Background *bool        `json:"background,omitempty"`
+	Error      *ErrorInfo   `json:"error,omitempty"`
+	Usage      *Usage       `json:"usage,omitempty"`
 }
+
+type RetrieveResponse = CreateResponse
 
 func (r *CreateResponse) OutputText() string {
 	if r == nil {
@@ -828,6 +891,12 @@ func dereferenceVariant(value any) any {
 	case *FetchURLTool:
 		return *v
 	case *FunctionTool:
+		return *v
+	case *PeopleSearchTool:
+		return *v
+	case *FinanceSearchTool:
+		return *v
+	case *SandboxTool:
 		return *v
 	case *MessageOutputItem:
 		return *v

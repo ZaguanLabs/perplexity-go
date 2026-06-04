@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"net/url"
 
 	"github.com/ZaguanLabs/perplexity-go/perplexity/api"
 	internalhttp "github.com/ZaguanLabs/perplexity-go/perplexity/internal/http"
@@ -92,4 +93,47 @@ func (s *Service) CreateStream(ctx context.Context, params *CreateParams, opts .
 	}
 
 	return newStream(ctx, resp.Response), nil
+}
+
+func (s *Service) Retrieve(ctx context.Context, responseID string, opts ...api.RequestOption) (*RetrieveResponse, error) {
+	result, _, err := s.retrieveWithResponse(ctx, responseID, opts...)
+	return result, err
+}
+
+func (s *Service) RetrieveRaw(ctx context.Context, responseID string, opts ...api.RequestOption) (*api.RawResponse[RetrieveResponse], error) {
+	result, raw, err := s.retrieveWithResponse(ctx, responseID, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return &api.RawResponse[RetrieveResponse]{
+		Data:       result,
+		StatusCode: raw.StatusCode,
+		Headers:    raw.Headers,
+		Body:       raw.Body,
+		RequestID:  raw.RequestID,
+	}, nil
+}
+
+func (s *Service) retrieveWithResponse(ctx context.Context, responseID string, opts ...api.RequestOption) (*RetrieveResponse, *internalhttp.Response, error) {
+	if responseID == "" {
+		return nil, nil, fmt.Errorf("responseID is required")
+	}
+
+	req := &internalhttp.Request{
+		Method:  http.MethodGet,
+		Path:    "/v1/responses/" + url.PathEscape(responseID),
+		Options: api.ApplyRequestOptions(opts),
+	}
+
+	resp, err := s.client.Do(ctx, req)
+	if err != nil {
+		return nil, nil, fmt.Errorf("request failed: %w", err)
+	}
+
+	var result RetrieveResponse
+	if err := json.Unmarshal(resp.Body, &result); err != nil {
+		return nil, nil, fmt.Errorf("failed to parse response: %w", err)
+	}
+
+	return &result, resp, nil
 }

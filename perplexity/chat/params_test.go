@@ -12,8 +12,11 @@ func TestWebSearchOptionsJSON(t *testing.T) {
 
 	opts := WebSearchOptions{
 		UserLocation: &UserLocation{
-			Latitude:  37.7749,
-			Longitude: -122.4194,
+			City:      stringPtr("San Francisco"),
+			Country:   stringPtr("US"),
+			Latitude:  float64Ptr(37.7749),
+			Longitude: float64Ptr(-122.4194),
+			Region:    stringPtr("CA"),
 		},
 		ImageResultsEnhancedRelevance: &enhanced,
 		SearchContextSize:             &contextSize,
@@ -25,8 +28,16 @@ func TestWebSearchOptionsJSON(t *testing.T) {
 		t.Fatalf("Failed to marshal WebSearchOptions: %v", err)
 	}
 
-	expected := `{"user_location":{"latitude":37.7749,"longitude":-122.4194},"image_results_enhanced_relevance":true,"search_context_size":"high","search_type":"pro"}`
+	expected := `{"user_location":{"city":"San Francisco","country":"US","latitude":37.7749,"longitude":-122.4194,"region":"CA"},"image_results_enhanced_relevance":true,"search_context_size":"high","search_type":"pro"}`
 	if string(data) != expected {
 		t.Errorf("JSON marshaling mismatch.\nExpected: %s\nGot:      %s", expected, string(data))
 	}
+}
+
+func stringPtr(v string) *string {
+	return &v
+}
+
+func float64Ptr(v float64) *float64 {
+	return &v
 }

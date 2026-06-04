@@ -28,13 +28,32 @@ func TestService_Create(t *testing.T) {
 		if params.Input.Text == nil || *params.Input.Text != "hello" {
 			t.Fatal("input should be present")
 		}
+		if params.Background == nil || !*params.Background {
+			t.Fatal("background should be present")
+		}
+		if len(params.Tools) != 4 {
+			t.Fatalf("tools length = %d, want 4", len(params.Tools))
+		}
+		if _, ok := params.Tools[0].AsWebSearch(); !ok {
+			t.Fatal("expected web_search tool")
+		}
+		if _, ok := params.Tools[1].AsPeopleSearch(); !ok {
+			t.Fatal("expected people_search tool")
+		}
+		if _, ok := params.Tools[2].AsFinanceSearch(); !ok {
+			t.Fatal("expected finance_search tool")
+		}
+		if _, ok := params.Tools[3].AsSandbox(); !ok {
+			t.Fatal("expected sandbox tool")
+		}
 
 		response := CreateResponse{
-			ID:        "resp_123",
-			CreatedAt: 1234567890,
-			Model:     "sonar-pro",
-			Object:    "response",
-			Status:    StatusCompleted,
+			ID:         "resp_123",
+			CreatedAt:  1234567890,
+			Model:      "sonar-pro",
+			Object:     "response",
+			Status:     StatusCompleted,
+			Background: types.Bool(true),
 			Output: []OutputItem{NewOutputItemFromMessage(MessageOutputItem{
 				ID:     "msg_1",
 				Type:   OutputItemTypeMessage,
@@ -55,7 +74,21 @@ func TestService_Create(t *testing.T) {
 	httpClient := internalhttp.NewClient(server.Client(), server.URL, "test-api-key", 2, nil, "test-agent", nil)
 	service := NewService(httpClient)
 
-	result, err := service.Create(context.Background(), &CreateParams{Input: Input{Text: types.String("hello")}, Model: types.String("sonar-pro")})
+	searchContextSize := SearchContextSizeLow
+	result, err := service.Create(context.Background(), &CreateParams{
+		Input:      Input{Text: types.String("hello")},
+		Background: types.Bool(true),
+		Model:      types.String("sonar-pro"),
+		Tools: []Tool{
+			NewToolFromWebSearch(WebSearchTool{
+				Type:              ToolTypeWebSearch,
+				SearchContextSize: &searchContextSize,
+			}),
+			NewToolFromPeopleSearch(PeopleSearchTool{Type: ToolTypePeopleSearch}),
+			NewToolFromFinanceSearch(FinanceSearchTool{Type: ToolTypeFinanceSearch}),
+			NewToolFromSandbox(SandboxTool{Type: ToolTypeSandbox}),
+		},
+	})
 	if err != nil {
 		t.Fatalf("Create failed: %v", err)
 	}
@@ -64,6 +97,47 @@ func TestService_Create(t *testing.T) {
 	}
 	if got := result.OutputText(); got != "Hello from responses" {
 		t.Fatalf("OutputText = %q", got)
+	}
+	if result.Background == nil || !*result.Background {
+		t.Fatal("Background should be true")
+	}
+}
+
+func TestService_Retrieve(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			t.Errorf("Expected GET request, got %s", r.Method)
+		}
+		if r.URL.Path != "/v1/responses/resp_123" {
+			t.Errorf("Expected path /v1/responses/resp_123, got %s", r.URL.Path)
+		}
+
+		response := RetrieveResponse{
+			ID:         "resp_123",
+			CreatedAt:  1234567890,
+			Model:      "sonar-pro",
+			Object:     "response",
+			Status:     StatusQueued,
+			Background: types.Bool(true),
+			Output:     []OutputItem{},
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(response)
+	}))
+	defer server.Close()
+
+	httpClient := internalhttp.NewClient(server.Client(), server.URL, "test-api-key", 2, nil, "test-agent", nil)
+	service := NewService(httpClient)
+
+	result, err := service.Retrieve(context.Background(), "resp_123")
+	if err != nil {
+		t.Fatalf("Retrieve failed: %v", err)
+	}
+	if result.ID != "resp_123" {
+		t.Fatalf("ID = %s, want resp_123", result.ID)
+	}
+	if result.Status != StatusQueued {
+		t.Fatalf("Status = %s, want %s", result.Status, StatusQueued)
 	}
 }
 
@@ -123,6 +197,9 @@ func TestService_CreateValidation(t *testing.T) {
 	streamEnabled := true
 	if _, err := service.Create(context.Background(), &CreateParams{Input: Input{Text: types.String("hello")}, Stream: &streamEnabled}); err == nil {
 		t.Fatal("expected error when stream is enabled")
+	}
+	if _, err := service.Retrieve(context.Background(), ""); err == nil {
+		t.Fatal("expected error for empty response ID")
 	}
 }
 
