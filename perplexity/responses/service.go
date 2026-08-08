@@ -13,10 +13,11 @@ import (
 
 type Service struct {
 	client *internalhttp.Client
+	Files  *FilesService
 }
 
 func NewService(httpClient *internalhttp.Client) *Service {
-	return &Service{client: httpClient}
+	return &Service{client: httpClient, Files: NewFilesService(httpClient)}
 }
 
 func (s *Service) Create(ctx context.Context, params *CreateParams, opts ...api.RequestOption) (*CreateResponse, error) {
@@ -135,5 +136,40 @@ func (s *Service) retrieveWithResponse(ctx context.Context, responseID string, o
 		return nil, nil, fmt.Errorf("failed to parse response: %w", err)
 	}
 
+	return &result, resp, nil
+}
+
+func (s *Service) Cancel(ctx context.Context, responseID string, opts ...api.RequestOption) (*CancelResponse, error) {
+	result, _, err := s.cancelWithResponse(ctx, responseID, opts...)
+	return result, err
+}
+
+func (s *Service) CancelRaw(ctx context.Context, responseID string, opts ...api.RequestOption) (*api.RawResponse[CancelResponse], error) {
+	result, raw, err := s.cancelWithResponse(ctx, responseID, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return &api.RawResponse[CancelResponse]{
+		Data: result, StatusCode: raw.StatusCode, Headers: raw.Headers, Body: raw.Body, RequestID: raw.RequestID,
+	}, nil
+}
+
+func (s *Service) cancelWithResponse(ctx context.Context, responseID string, opts ...api.RequestOption) (*CancelResponse, *internalhttp.Response, error) {
+	if responseID == "" {
+		return nil, nil, fmt.Errorf("responseID is required")
+	}
+	req := &internalhttp.Request{
+		Method:  http.MethodPost,
+		Path:    "/v1/responses/" + url.PathEscape(responseID) + "/cancel",
+		Options: api.ApplyRequestOptions(opts),
+	}
+	resp, err := s.client.Do(ctx, req)
+	if err != nil {
+		return nil, nil, fmt.Errorf("request failed: %w", err)
+	}
+	var result CancelResponse
+	if err := json.Unmarshal(resp.Body, &result); err != nil {
+		return nil, nil, fmt.Errorf("failed to parse response: %w", err)
+	}
 	return &result, resp, nil
 }

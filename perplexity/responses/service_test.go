@@ -6,6 +6,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	internalhttp "github.com/ZaguanLabs/perplexity-go/perplexity/internal/http"
@@ -200,6 +201,74 @@ func TestService_CreateValidation(t *testing.T) {
 	}
 	if _, err := service.Retrieve(context.Background(), ""); err == nil {
 		t.Fatal("expected error for empty response ID")
+	}
+}
+
+func TestService_CancelAndFiles(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/v1/responses/resp_123/cancel":
+			if r.Method != http.MethodPost {
+				t.Fatalf("method = %s", r.Method)
+			}
+			_, _ = io.WriteString(w, `{"response_id":"resp_123","status":"cancelling"}`)
+		case "/v1/responses/resp_123/files":
+			_, _ = io.WriteString(w, `{"object":"list","data":[{"id":"file_1","bytes":4,"created_at":1,"filename":"a.txt","object":"file"}]}`)
+		case "/v1/responses/resp_123/files/file_1/content":
+			if got := r.Header.Get("Accept"); got != "application/octet-stream" {
+				t.Fatalf("Accept = %q", got)
+			}
+			_, _ = io.WriteString(w, "data")
+		default:
+			t.Fatalf("unexpected path %s", r.URL.Path)
+		}
+	}))
+	defer server.Close()
+
+	service := NewService(internalhttp.NewClient(server.Client(), server.URL, "key", 0, nil, "agent", nil))
+	cancelled, err := service.Cancel(context.Background(), "resp_123")
+	if err != nil || cancelled.Status != "cancelling" {
+		t.Fatalf("Cancel = %#v, %v", cancelled, err)
+	}
+	files, err := service.Files.List(context.Background(), "resp_123")
+	if err != nil || len(files.Data) != 1 || files.Data[0].Filename != "a.txt" {
+		t.Fatalf("List = %#v, %v", files, err)
+	}
+	content, err := service.Files.Content(context.Background(), "resp_123", "file_1")
+	if err != nil || string(content) != "data" {
+		t.Fatalf("Content = %q, %v", content, err)
+	}
+}
+
+func TestNewResponseVariants(t *testing.T) {
+	payload := `{"type":"mcp_call","id":"mcp_1","arguments":"{}","name":"lookup","server_label":"docs","output":"ok"}`
+	var item OutputItem
+	if err := json.Unmarshal([]byte(payload), &item); err != nil {
+		t.Fatal(err)
+	}
+	call, ok := item.AsMCPCall()
+	if !ok || call.Output == nil || *call.Output != "ok" {
+		t.Fatalf("MCP call = %#v", call)
+	}
+
+	skill := NewSkillFromInline(InlineSkill{Type: SkillTypeInline, Name: "review", Description: "Review", Instructions: "Check it"})
+	data, err := json.Marshal(CreateParams{Input: Input{Text: types.String("hello")}, Skills: []Skill{skill}, Store: types.Bool(false), PreviousResponseID: types.String("resp_prev")})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, expected := range []string{`"skills"`, `"store":false`, `"previous_response_id":"resp_prev"`} {
+		if !strings.Contains(string(data), expected) {
+			t.Fatalf("payload %s missing %s", data, expected)
+		}
+	}
+
+	var event StreamEvent
+	if err := json.Unmarshal([]byte(`{"type":"response.skill.loaded","name":"office/pdf","sequence_number":4}`), &event); err != nil {
+		t.Fatal(err)
+	}
+	loaded, ok := event.AsSkillLoaded()
+	if !ok || loaded.Name != "office/pdf" {
+		t.Fatalf("event = %#v", loaded)
 	}
 }
 

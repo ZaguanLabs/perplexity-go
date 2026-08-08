@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.4.0] - 2026-08-08
+
+### Added
+- Added Responses cancellation and sandbox response-file list/content APIs from Python SDK v0.43.1.
+- Added typed MCP tools, built-in and inline skills, continuation/storage parameters, and the expanded MCP, skill, advisor, and sandbox output-item union.
+- Added the `response.skill.loaded` stream event and chat `response_formatting_locale` parameter.
+
+### Changed
+- Updated SDK version to `1.4.0` and the official Python compatibility target to `0.43.1`.
+- Imported and reviewed the official Python SDK changes from v0.37.0 through v0.43.1.
+
+### Packaging note
+- The upstream v0.43.1 tag omits a PEP 517 build-system declaration and contains mutually incompatible setuptools license metadata. The pristine source snapshot is retained; local build artifacts were produced from a temporary copy with only the obsolete license classifier removed.
+
 ## [1.3.0] - 2026-06-04
 
 ### Added

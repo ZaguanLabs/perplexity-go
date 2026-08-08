@@ -34,6 +34,8 @@ type MessageOutputRole string
 
 type SearchResultSource string
 
+type SkillType string
+
 const (
 	StatusCompleted      Status = "completed"
 	StatusFailed         Status = "failed"
@@ -62,6 +64,7 @@ const (
 	EventTypeReasoningFetchURLQueries EventType = "response.reasoning.fetch_url_queries"
 	EventTypeReasoningFetchURLResults EventType = "response.reasoning.fetch_url_results"
 	EventTypeReasoningStopped         EventType = "response.reasoning.stopped"
+	EventTypeSkillLoaded              EventType = "response.skill.loaded"
 
 	InputMessageRoleUser      InputMessageRole = "user"
 	InputMessageRoleAssistant InputMessageRole = "assistant"
@@ -83,15 +86,32 @@ const (
 	ToolTypePeopleSearch  ToolType = "people_search"
 	ToolTypeFinanceSearch ToolType = "finance_search"
 	ToolTypeSandbox       ToolType = "sandbox"
+	ToolTypeMCP           ToolType = "mcp"
+
+	SkillTypeBuiltin SkillType = "builtin"
+	SkillTypeInline  SkillType = "inline"
 
 	SearchContextSizeLow    SearchContextSize = "low"
 	SearchContextSizeMedium SearchContextSize = "medium"
 	SearchContextSizeHigh   SearchContextSize = "high"
 
-	OutputItemTypeMessage         OutputItemType = "message"
-	OutputItemTypeSearchResults   OutputItemType = "search_results"
-	OutputItemTypeFetchURLResults OutputItemType = "fetch_url_results"
-	OutputItemTypeFunctionCall    OutputItemType = "function_call"
+	OutputItemTypeMessage           OutputItemType = "message"
+	OutputItemTypeSearchResults     OutputItemType = "search_results"
+	OutputItemTypeFetchURLResults   OutputItemType = "fetch_url_results"
+	OutputItemTypeFunctionCall      OutputItemType = "function_call"
+	OutputItemTypeMCPListTools      OutputItemType = "mcp_list_tools"
+	OutputItemTypeMCPCall           OutputItemType = "mcp_call"
+	OutputItemTypeSkillLoaded       OutputItemType = "skill_loaded"
+	OutputItemTypeAdvisorResult     OutputItemType = "advisor_result"
+	OutputItemTypeSandboxResults    OutputItemType = "sandbox_results"
+	OutputItemTypeSandboxWriteFile  OutputItemType = "sandbox_write_file"
+	OutputItemTypeSandboxReadFile   OutputItemType = "sandbox_read_file"
+	OutputItemTypeSandboxEditFile   OutputItemType = "sandbox_edit_file"
+	OutputItemTypeSandboxGrep       OutputItemType = "sandbox_grep"
+	OutputItemTypeSandboxGlob       OutputItemType = "sandbox_glob"
+	OutputItemTypeSandboxApplyPatch OutputItemType = "sandbox_apply_patch"
+	OutputItemTypeShareFile         OutputItemType = "share_file"
+	OutputItemTypeUnknown           OutputItemType = "unknown"
 
 	ResponseFormatTypeJSONSchema ResponseFormatType = "json_schema"
 
@@ -257,6 +277,56 @@ type Reasoning struct {
 	Effort *ReasoningEffort `json:"effort,omitempty"`
 }
 
+type BuiltinSkill struct {
+	Name string    `json:"name"`
+	Type SkillType `json:"type"`
+}
+
+type InlineSkill struct {
+	Description  string    `json:"description"`
+	Instructions string    `json:"instructions"`
+	Name         string    `json:"name"`
+	Type         SkillType `json:"type"`
+}
+
+type Skill struct {
+	value any
+}
+
+func NewSkillFromBuiltin(v BuiltinSkill) Skill { return Skill{value: v} }
+
+func NewSkillFromInline(v InlineSkill) Skill { return Skill{value: v} }
+
+func (s Skill) MarshalJSON() ([]byte, error) { return marshalUnionValue(s.value) }
+
+func (s *Skill) UnmarshalJSON(data []byte) error {
+	variant, err := unmarshalByTypeField(data, map[string]func() any{
+		string(SkillTypeBuiltin): func() any { return &BuiltinSkill{} },
+		string(SkillTypeInline):  func() any { return &InlineSkill{} },
+	})
+	if err != nil {
+		return err
+	}
+	s.value = dereferenceVariant(variant)
+	return nil
+}
+
+func (s Skill) AsBuiltin() (*BuiltinSkill, bool) {
+	v, ok := s.value.(BuiltinSkill)
+	if !ok {
+		return nil, false
+	}
+	return &v, true
+}
+
+func (s Skill) AsInline() (*InlineSkill, bool) {
+	v, ok := s.value.(InlineSkill)
+	if !ok {
+		return nil, false
+	}
+	return &v, true
+}
+
 type WebSearchToolFilters struct {
 	LastUpdatedAfterFilter  *string  `json:"last_updated_after_filter,omitempty"`
 	LastUpdatedBeforeFilter *string  `json:"last_updated_before_filter,omitempty"`
@@ -300,6 +370,15 @@ type SandboxTool struct {
 	Type ToolType `json:"type"`
 }
 
+type MCPTool struct {
+	ServerLabel   string            `json:"server_label"`
+	ServerURL     string            `json:"server_url"`
+	Type          ToolType          `json:"type"`
+	AllowedTools  []string          `json:"allowed_tools,omitempty"`
+	Authorization *string           `json:"authorization,omitempty"`
+	Headers       map[string]string `json:"headers,omitempty"`
+}
+
 type FunctionTool struct {
 	Name        string         `json:"name"`
 	Type        ToolType       `json:"type"`
@@ -324,6 +403,8 @@ func NewToolFromFinanceSearch(v FinanceSearchTool) Tool { return Tool{value: v} 
 
 func NewToolFromSandbox(v SandboxTool) Tool { return Tool{value: v} }
 
+func NewToolFromMCP(v MCPTool) Tool { return Tool{value: v} }
+
 func (t Tool) MarshalJSON() ([]byte, error) {
 	return marshalUnionValue(t.value)
 }
@@ -336,6 +417,7 @@ func (t *Tool) UnmarshalJSON(data []byte) error {
 		string(ToolTypePeopleSearch):  func() any { return &PeopleSearchTool{} },
 		string(ToolTypeFinanceSearch): func() any { return &FinanceSearchTool{} },
 		string(ToolTypeSandbox):       func() any { return &SandboxTool{} },
+		string(ToolTypeMCP):           func() any { return &MCPTool{} },
 	})
 	if err != nil {
 		return err
@@ -392,6 +474,11 @@ func (t Tool) AsSandbox() (*SandboxTool, bool) {
 	return nil, false
 }
 
+func (t Tool) AsMCP() (*MCPTool, bool) {
+	v, ok := t.value.(MCPTool)
+	return &v, ok
+}
+
 type JSONSchemaFormat struct {
 	Name        string         `json:"name"`
 	Schema      map[string]any `json:"schema"`
@@ -414,8 +501,11 @@ type CreateParams struct {
 	Model              *string         `json:"model,omitempty"`
 	Models             []string        `json:"models,omitempty"`
 	Preset             *string         `json:"preset,omitempty"`
+	PreviousResponseID *string         `json:"previous_response_id,omitempty"`
 	Reasoning          *Reasoning      `json:"reasoning,omitempty"`
 	ResponseFormat     *ResponseFormat `json:"response_format,omitempty"`
+	Skills             []Skill         `json:"skills,omitempty"`
+	Store              *bool           `json:"store,omitempty"`
 	Stream             *bool           `json:"stream,omitempty"`
 	Tools              []Tool          `json:"tools,omitempty"`
 }
@@ -513,6 +603,133 @@ type FunctionCallOutputItem struct {
 	ThoughtSignature *string        `json:"thought_signature,omitempty"`
 }
 
+type MCPListToolsTool struct {
+	InputSchema map[string]any `json:"input_schema"`
+	Name        string         `json:"name"`
+	Description *string        `json:"description,omitempty"`
+}
+
+type MCPListToolsOutputItem struct {
+	ID          string             `json:"id"`
+	ServerLabel string             `json:"server_label"`
+	Tools       []MCPListToolsTool `json:"tools"`
+	Type        OutputItemType     `json:"type"`
+	Error       *string            `json:"error,omitempty"`
+}
+
+type MCPCallOutputItem struct {
+	ID          string         `json:"id"`
+	Arguments   string         `json:"arguments"`
+	Name        string         `json:"name"`
+	ServerLabel string         `json:"server_label"`
+	Type        OutputItemType `json:"type"`
+	Error       *string        `json:"error,omitempty"`
+	Output      *string        `json:"output,omitempty"`
+}
+
+type SkillLoadedOutputItem struct {
+	Name string         `json:"name"`
+	Type OutputItemType `json:"type"`
+}
+
+type AdvisorResultOutputItem struct {
+	CallID       string         `json:"call_id"`
+	Status       Status         `json:"status"`
+	Type         OutputItemType `json:"type"`
+	Advice       *string        `json:"advice,omitempty"`
+	Arguments    *string        `json:"arguments,omitempty"`
+	ErrorCode    *string        `json:"error_code,omitempty"`
+	ErrorMessage *string        `json:"error_message,omitempty"`
+	Question     *string        `json:"question,omitempty"`
+}
+
+type SandboxResult struct {
+	DurationMS int    `json:"duration_ms"`
+	ExitCode   int    `json:"exit_code"`
+	Status     string `json:"status"`
+	Stderr     string `json:"stderr"`
+	Stdout     string `json:"stdout"`
+}
+
+type SandboxResultsOutputItem struct {
+	CallID      string          `json:"call_id"`
+	Code        string          `json:"code"`
+	Language    string          `json:"language"`
+	Results     []SandboxResult `json:"results"`
+	Status      string          `json:"status"`
+	Type        OutputItemType  `json:"type"`
+	ContainerID *string         `json:"container_id,omitempty"`
+}
+
+type SandboxWriteFileOutputItem struct {
+	CallID    string         `json:"call_id"`
+	FilePath  string         `json:"file_path"`
+	Type      OutputItemType `json:"type"`
+	Error     *string        `json:"error,omitempty"`
+	SizeBytes *int           `json:"size_bytes,omitempty"`
+}
+
+type SandboxReadFileOutputItem struct {
+	CallID     string         `json:"call_id"`
+	FilePath   string         `json:"file_path"`
+	Type       OutputItemType `json:"type"`
+	Content    *string        `json:"content,omitempty"`
+	Error      *string        `json:"error,omitempty"`
+	StartLine  *int           `json:"start_line,omitempty"`
+	TotalLines *int           `json:"total_lines,omitempty"`
+}
+
+type SandboxEditFileOutputItem struct {
+	CallID   string         `json:"call_id"`
+	Type     OutputItemType `json:"type"`
+	Error    *string        `json:"error,omitempty"`
+	FilePath *string        `json:"file_path,omitempty"`
+	Message  *string        `json:"message,omitempty"`
+}
+
+type SandboxGrepOutputItem struct {
+	CallID    string         `json:"call_id"`
+	Type      OutputItemType `json:"type"`
+	Count     *int           `json:"count,omitempty"`
+	Error     *string        `json:"error,omitempty"`
+	Files     []string       `json:"files,omitempty"`
+	Truncated *bool          `json:"truncated,omitempty"`
+}
+
+type SandboxGlobOutputItem struct {
+	CallID    string         `json:"call_id"`
+	Type      OutputItemType `json:"type"`
+	Count     *int           `json:"count,omitempty"`
+	Error     *string        `json:"error,omitempty"`
+	Files     []string       `json:"files,omitempty"`
+	Truncated *bool          `json:"truncated,omitempty"`
+}
+
+type SandboxApplyPatchOutputItem struct {
+	CallID   string         `json:"call_id"`
+	Type     OutputItemType `json:"type"`
+	Added    []string       `json:"added,omitempty"`
+	Deleted  []string       `json:"deleted,omitempty"`
+	Error    *string        `json:"error,omitempty"`
+	Modified []string       `json:"modified,omitempty"`
+}
+
+type ShareFileOutputItem struct {
+	CallID    string         `json:"call_id"`
+	Type      OutputItemType `json:"type"`
+	Error     *string        `json:"error,omitempty"`
+	FileID    *string        `json:"file_id,omitempty"`
+	Filename  *string        `json:"filename,omitempty"`
+	SizeBytes *int           `json:"size_bytes,omitempty"`
+	URL       *string        `json:"url,omitempty"`
+}
+
+type UnknownOutputItem struct {
+	ItemName string         `json:"item_name"`
+	Payload  map[string]any `json:"payload"`
+	Type     OutputItemType `json:"type"`
+}
+
 type OutputItem struct {
 	value any
 }
@@ -529,16 +746,55 @@ func NewOutputItemFromFetchURLResults(v FetchURLResultsOutputItem) OutputItem {
 
 func NewOutputItemFromFunctionCall(v FunctionCallOutputItem) OutputItem { return OutputItem{value: v} }
 
+func NewOutputItemFromMCPListTools(v MCPListToolsOutputItem) OutputItem { return OutputItem{value: v} }
+func NewOutputItemFromMCPCall(v MCPCallOutputItem) OutputItem           { return OutputItem{value: v} }
+func NewOutputItemFromSkillLoaded(v SkillLoadedOutputItem) OutputItem   { return OutputItem{value: v} }
+func NewOutputItemFromAdvisorResult(v AdvisorResultOutputItem) OutputItem {
+	return OutputItem{value: v}
+}
+func NewOutputItemFromSandboxResults(v SandboxResultsOutputItem) OutputItem {
+	return OutputItem{value: v}
+}
+func NewOutputItemFromSandboxWriteFile(v SandboxWriteFileOutputItem) OutputItem {
+	return OutputItem{value: v}
+}
+func NewOutputItemFromSandboxReadFile(v SandboxReadFileOutputItem) OutputItem {
+	return OutputItem{value: v}
+}
+func NewOutputItemFromSandboxEditFile(v SandboxEditFileOutputItem) OutputItem {
+	return OutputItem{value: v}
+}
+func NewOutputItemFromSandboxGrep(v SandboxGrepOutputItem) OutputItem { return OutputItem{value: v} }
+func NewOutputItemFromSandboxGlob(v SandboxGlobOutputItem) OutputItem { return OutputItem{value: v} }
+func NewOutputItemFromSandboxApplyPatch(v SandboxApplyPatchOutputItem) OutputItem {
+	return OutputItem{value: v}
+}
+func NewOutputItemFromShareFile(v ShareFileOutputItem) OutputItem { return OutputItem{value: v} }
+func NewOutputItemFromUnknown(v UnknownOutputItem) OutputItem     { return OutputItem{value: v} }
+
 func (o OutputItem) MarshalJSON() ([]byte, error) {
 	return marshalUnionValue(o.value)
 }
 
 func (o *OutputItem) UnmarshalJSON(data []byte) error {
 	variant, err := unmarshalByTypeField(data, map[string]func() any{
-		string(OutputItemTypeMessage):         func() any { return &MessageOutputItem{} },
-		string(OutputItemTypeSearchResults):   func() any { return &SearchResultsOutputItem{} },
-		string(OutputItemTypeFetchURLResults): func() any { return &FetchURLResultsOutputItem{} },
-		string(OutputItemTypeFunctionCall):    func() any { return &FunctionCallOutputItem{} },
+		string(OutputItemTypeMessage):           func() any { return &MessageOutputItem{} },
+		string(OutputItemTypeSearchResults):     func() any { return &SearchResultsOutputItem{} },
+		string(OutputItemTypeFetchURLResults):   func() any { return &FetchURLResultsOutputItem{} },
+		string(OutputItemTypeFunctionCall):      func() any { return &FunctionCallOutputItem{} },
+		string(OutputItemTypeMCPListTools):      func() any { return &MCPListToolsOutputItem{} },
+		string(OutputItemTypeMCPCall):           func() any { return &MCPCallOutputItem{} },
+		string(OutputItemTypeSkillLoaded):       func() any { return &SkillLoadedOutputItem{} },
+		string(OutputItemTypeAdvisorResult):     func() any { return &AdvisorResultOutputItem{} },
+		string(OutputItemTypeSandboxResults):    func() any { return &SandboxResultsOutputItem{} },
+		string(OutputItemTypeSandboxWriteFile):  func() any { return &SandboxWriteFileOutputItem{} },
+		string(OutputItemTypeSandboxReadFile):   func() any { return &SandboxReadFileOutputItem{} },
+		string(OutputItemTypeSandboxEditFile):   func() any { return &SandboxEditFileOutputItem{} },
+		string(OutputItemTypeSandboxGrep):       func() any { return &SandboxGrepOutputItem{} },
+		string(OutputItemTypeSandboxGlob):       func() any { return &SandboxGlobOutputItem{} },
+		string(OutputItemTypeSandboxApplyPatch): func() any { return &SandboxApplyPatchOutputItem{} },
+		string(OutputItemTypeShareFile):         func() any { return &ShareFileOutputItem{} },
+		string(OutputItemTypeUnknown):           func() any { return &UnknownOutputItem{} },
 	})
 	if err != nil {
 		return err
@@ -579,16 +835,140 @@ func (o OutputItem) AsFunctionCall() (*FunctionCallOutputItem, bool) {
 	return nil, false
 }
 
+func (o OutputItem) AsMCPListTools() (*MCPListToolsOutputItem, bool) {
+	v, ok := o.value.(MCPListToolsOutputItem)
+	if !ok {
+		return nil, false
+	}
+	return &v, true
+}
+
+func (o OutputItem) AsMCPCall() (*MCPCallOutputItem, bool) {
+	v, ok := o.value.(MCPCallOutputItem)
+	if !ok {
+		return nil, false
+	}
+	return &v, true
+}
+
+func (o OutputItem) AsSkillLoaded() (*SkillLoadedOutputItem, bool) {
+	v, ok := o.value.(SkillLoadedOutputItem)
+	if !ok {
+		return nil, false
+	}
+	return &v, true
+}
+
+func (o OutputItem) AsAdvisorResult() (*AdvisorResultOutputItem, bool) {
+	v, ok := o.value.(AdvisorResultOutputItem)
+	if !ok {
+		return nil, false
+	}
+	return &v, true
+}
+
+func (o OutputItem) AsSandboxResults() (*SandboxResultsOutputItem, bool) {
+	v, ok := o.value.(SandboxResultsOutputItem)
+	if !ok {
+		return nil, false
+	}
+	return &v, true
+}
+
+func (o OutputItem) AsSandboxWriteFile() (*SandboxWriteFileOutputItem, bool) {
+	v, ok := o.value.(SandboxWriteFileOutputItem)
+	if !ok {
+		return nil, false
+	}
+	return &v, true
+}
+
+func (o OutputItem) AsSandboxReadFile() (*SandboxReadFileOutputItem, bool) {
+	v, ok := o.value.(SandboxReadFileOutputItem)
+	if !ok {
+		return nil, false
+	}
+	return &v, true
+}
+
+func (o OutputItem) AsSandboxEditFile() (*SandboxEditFileOutputItem, bool) {
+	v, ok := o.value.(SandboxEditFileOutputItem)
+	if !ok {
+		return nil, false
+	}
+	return &v, true
+}
+
+func (o OutputItem) AsSandboxGrep() (*SandboxGrepOutputItem, bool) {
+	v, ok := o.value.(SandboxGrepOutputItem)
+	if !ok {
+		return nil, false
+	}
+	return &v, true
+}
+
+func (o OutputItem) AsSandboxGlob() (*SandboxGlobOutputItem, bool) {
+	v, ok := o.value.(SandboxGlobOutputItem)
+	if !ok {
+		return nil, false
+	}
+	return &v, true
+}
+
+func (o OutputItem) AsSandboxApplyPatch() (*SandboxApplyPatchOutputItem, bool) {
+	v, ok := o.value.(SandboxApplyPatchOutputItem)
+	if !ok {
+		return nil, false
+	}
+	return &v, true
+}
+
+func (o OutputItem) AsShareFile() (*ShareFileOutputItem, bool) {
+	v, ok := o.value.(ShareFileOutputItem)
+	if !ok {
+		return nil, false
+	}
+	return &v, true
+}
+
+func (o OutputItem) AsUnknown() (*UnknownOutputItem, bool) {
+	v, ok := o.value.(UnknownOutputItem)
+	if !ok {
+		return nil, false
+	}
+	return &v, true
+}
+
 type CreateResponse struct {
-	ID         string       `json:"id"`
-	CreatedAt  int64        `json:"created_at"`
-	Model      string       `json:"model"`
-	Object     string       `json:"object"`
-	Output     []OutputItem `json:"output"`
-	Status     Status       `json:"status"`
-	Background *bool        `json:"background,omitempty"`
-	Error      *ErrorInfo   `json:"error,omitempty"`
-	Usage      *Usage       `json:"usage,omitempty"`
+	ID                 string       `json:"id"`
+	CreatedAt          int64        `json:"created_at"`
+	Model              string       `json:"model"`
+	Object             string       `json:"object"`
+	Output             []OutputItem `json:"output"`
+	Status             Status       `json:"status"`
+	Background         *bool        `json:"background,omitempty"`
+	Error              *ErrorInfo   `json:"error,omitempty"`
+	PreviousResponseID *string      `json:"previous_response_id,omitempty"`
+	Store              *bool        `json:"store,omitempty"`
+	Usage              *Usage       `json:"usage,omitempty"`
+}
+
+type CancelResponse struct {
+	ResponseID string `json:"response_id"`
+	Status     string `json:"status"`
+}
+
+type ResponseFile struct {
+	ID        string `json:"id"`
+	Bytes     int    `json:"bytes"`
+	CreatedAt int64  `json:"created_at"`
+	Filename  string `json:"filename"`
+	Object    string `json:"object"`
+}
+
+type ResponseFileList struct {
+	Data   []ResponseFile `json:"data"`
+	Object string         `json:"object"`
 }
 
 type RetrieveResponse = CreateResponse
@@ -709,6 +1089,12 @@ type ReasoningStoppedEvent struct {
 	Thought        *string   `json:"thought,omitempty"`
 }
 
+type SkillLoadedEvent struct {
+	Name           string    `json:"name"`
+	SequenceNumber int       `json:"sequence_number"`
+	Type           EventType `json:"type"`
+}
+
 type StreamEvent struct {
 	value any
 }
@@ -733,6 +1119,7 @@ func (e *StreamEvent) UnmarshalJSON(data []byte) error {
 		string(EventTypeReasoningFetchURLQueries): func() any { return &FetchURLQueriesEvent{} },
 		string(EventTypeReasoningFetchURLResults): func() any { return &FetchURLResultsEvent{} },
 		string(EventTypeReasoningStopped):         func() any { return &ReasoningStoppedEvent{} },
+		string(EventTypeSkillLoaded):              func() any { return &SkillLoadedEvent{} },
 	})
 	if err != nil {
 		return err
@@ -853,6 +1240,14 @@ func (e StreamEvent) AsReasoningStopped() (*ReasoningStoppedEvent, bool) {
 	return nil, false
 }
 
+func (e StreamEvent) AsSkillLoaded() (*SkillLoadedEvent, bool) {
+	v, ok := e.value.(SkillLoadedEvent)
+	if !ok {
+		return nil, false
+	}
+	return &v, true
+}
+
 func marshalUnionValue(value any) ([]byte, error) {
 	if value == nil {
 		return []byte("null"), nil
@@ -898,6 +1293,12 @@ func dereferenceVariant(value any) any {
 		return *v
 	case *SandboxTool:
 		return *v
+	case *MCPTool:
+		return *v
+	case *BuiltinSkill:
+		return *v
+	case *InlineSkill:
+		return *v
 	case *MessageOutputItem:
 		return *v
 	case *SearchResultsOutputItem:
@@ -905,6 +1306,32 @@ func dereferenceVariant(value any) any {
 	case *FetchURLResultsOutputItem:
 		return *v
 	case *FunctionCallOutputItem:
+		return *v
+	case *MCPListToolsOutputItem:
+		return *v
+	case *MCPCallOutputItem:
+		return *v
+	case *SkillLoadedOutputItem:
+		return *v
+	case *AdvisorResultOutputItem:
+		return *v
+	case *SandboxResultsOutputItem:
+		return *v
+	case *SandboxWriteFileOutputItem:
+		return *v
+	case *SandboxReadFileOutputItem:
+		return *v
+	case *SandboxEditFileOutputItem:
+		return *v
+	case *SandboxGrepOutputItem:
+		return *v
+	case *SandboxGlobOutputItem:
+		return *v
+	case *SandboxApplyPatchOutputItem:
+		return *v
+	case *ShareFileOutputItem:
+		return *v
+	case *UnknownOutputItem:
 		return *v
 	case *ResponseCreatedEvent:
 		return *v
@@ -933,6 +1360,8 @@ func dereferenceVariant(value any) any {
 	case *FetchURLResultsEvent:
 		return *v
 	case *ReasoningStoppedEvent:
+		return *v
+	case *SkillLoadedEvent:
 		return *v
 	default:
 		return value

@@ -66,6 +66,9 @@ type CompletionParams struct {
 	// ResponseFormat specifies the response format (optional).
 	ResponseFormat *ResponseFormat `json:"response_format,omitempty"`
 
+	// ResponseFormattingLocale controls locale-specific response formatting conventions (optional).
+	ResponseFormattingLocale *string `json:"response_formatting_locale,omitempty"`
+
 	// Country for search localization (optional).
 	Country *string `json:"country,omitempty"`
 
