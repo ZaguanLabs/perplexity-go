@@ -87,6 +87,8 @@ const (
 	ToolTypeFinanceSearch ToolType = "finance_search"
 	ToolTypeSandbox       ToolType = "sandbox"
 	ToolTypeMCP           ToolType = "mcp"
+	ToolTypeConnector     ToolType = "connector"
+	ToolTypeNamespace     ToolType = "namespace"
 
 	SkillTypeBuiltin SkillType = "builtin"
 	SkillTypeInline  SkillType = "inline"
@@ -101,6 +103,7 @@ const (
 	OutputItemTypeFunctionCall      OutputItemType = "function_call"
 	OutputItemTypeMCPListTools      OutputItemType = "mcp_list_tools"
 	OutputItemTypeMCPCall           OutputItemType = "mcp_call"
+	OutputItemTypeToolSearch        OutputItemType = "tool_search_output"
 	OutputItemTypeSkillLoaded       OutputItemType = "skill_loaded"
 	OutputItemTypeAdvisorResult     OutputItemType = "advisor_result"
 	OutputItemTypeSandboxResults    OutputItemType = "sandbox_results"
@@ -376,7 +379,16 @@ type MCPTool struct {
 	Type          ToolType          `json:"type"`
 	AllowedTools  []string          `json:"allowed_tools,omitempty"`
 	Authorization *string           `json:"authorization,omitempty"`
+	DeferLoading  *bool             `json:"defer_loading,omitempty"`
 	Headers       map[string]string `json:"headers,omitempty"`
+}
+
+type ConnectorTool struct {
+	ID                string   `json:"id"`
+	ServerLabel       string   `json:"server_label"`
+	Type              ToolType `json:"type"`
+	AllowedTools      []string `json:"allowed_tools,omitempty"`
+	ServerDescription *string  `json:"server_description,omitempty"`
 }
 
 type FunctionTool struct {
@@ -405,6 +417,8 @@ func NewToolFromSandbox(v SandboxTool) Tool { return Tool{value: v} }
 
 func NewToolFromMCP(v MCPTool) Tool { return Tool{value: v} }
 
+func NewToolFromConnector(v ConnectorTool) Tool { return Tool{value: v} }
+
 func (t Tool) MarshalJSON() ([]byte, error) {
 	return marshalUnionValue(t.value)
 }
@@ -418,6 +432,7 @@ func (t *Tool) UnmarshalJSON(data []byte) error {
 		string(ToolTypeFinanceSearch): func() any { return &FinanceSearchTool{} },
 		string(ToolTypeSandbox):       func() any { return &SandboxTool{} },
 		string(ToolTypeMCP):           func() any { return &MCPTool{} },
+		string(ToolTypeConnector):     func() any { return &ConnectorTool{} },
 	})
 	if err != nil {
 		return err
@@ -479,6 +494,11 @@ func (t Tool) AsMCP() (*MCPTool, bool) {
 	return &v, ok
 }
 
+func (t Tool) AsConnector() (*ConnectorTool, bool) {
+	v, ok := t.value.(ConnectorTool)
+	return &v, ok
+}
+
 type JSONSchemaFormat struct {
 	Name        string         `json:"name"`
 	Schema      map[string]any `json:"schema"`
@@ -507,7 +527,9 @@ type CreateParams struct {
 	Skills             []Skill         `json:"skills,omitempty"`
 	Store              *bool           `json:"store,omitempty"`
 	Stream             *bool           `json:"stream,omitempty"`
+	Temperature        *float64        `json:"temperature,omitempty"`
 	Tools              []Tool          `json:"tools,omitempty"`
+	TopP               *float64        `json:"top_p,omitempty"`
 }
 
 type ErrorInfo struct {
@@ -615,6 +637,7 @@ type MCPListToolsOutputItem struct {
 	Tools       []MCPListToolsTool `json:"tools"`
 	Type        OutputItemType     `json:"type"`
 	Error       *string            `json:"error,omitempty"`
+	ConnectorID *string            `json:"connector_id,omitempty"`
 }
 
 type MCPCallOutputItem struct {
@@ -625,6 +648,31 @@ type MCPCallOutputItem struct {
 	Type        OutputItemType `json:"type"`
 	Error       *string        `json:"error,omitempty"`
 	Output      *string        `json:"output,omitempty"`
+	ConnectorID *string        `json:"connector_id,omitempty"`
+}
+
+type NamespaceToolDef struct {
+	Name        string         `json:"name"`
+	Type        ToolType       `json:"type"`
+	Description *string        `json:"description,omitempty"`
+	Parameters  map[string]any `json:"parameters,omitempty"`
+}
+
+type NamespaceTool struct {
+	Description string             `json:"description"`
+	Name        string             `json:"name"`
+	Tools       []NamespaceToolDef `json:"tools"`
+	Type        ToolType           `json:"type"`
+}
+
+type ToolSearchOutputItem struct {
+	CallID    *string         `json:"call_id"`
+	Execution string          `json:"execution"`
+	ID        string          `json:"id"`
+	Status    string          `json:"status"`
+	Tools     []NamespaceTool `json:"tools"`
+	Type      OutputItemType  `json:"type"`
+	Arguments *string         `json:"arguments,omitempty"`
 }
 
 type SkillLoadedOutputItem struct {
@@ -748,6 +796,7 @@ func NewOutputItemFromFunctionCall(v FunctionCallOutputItem) OutputItem { return
 
 func NewOutputItemFromMCPListTools(v MCPListToolsOutputItem) OutputItem { return OutputItem{value: v} }
 func NewOutputItemFromMCPCall(v MCPCallOutputItem) OutputItem           { return OutputItem{value: v} }
+func NewOutputItemFromToolSearch(v ToolSearchOutputItem) OutputItem     { return OutputItem{value: v} }
 func NewOutputItemFromSkillLoaded(v SkillLoadedOutputItem) OutputItem   { return OutputItem{value: v} }
 func NewOutputItemFromAdvisorResult(v AdvisorResultOutputItem) OutputItem {
 	return OutputItem{value: v}
@@ -784,6 +833,7 @@ func (o *OutputItem) UnmarshalJSON(data []byte) error {
 		string(OutputItemTypeFunctionCall):      func() any { return &FunctionCallOutputItem{} },
 		string(OutputItemTypeMCPListTools):      func() any { return &MCPListToolsOutputItem{} },
 		string(OutputItemTypeMCPCall):           func() any { return &MCPCallOutputItem{} },
+		string(OutputItemTypeToolSearch):        func() any { return &ToolSearchOutputItem{} },
 		string(OutputItemTypeSkillLoaded):       func() any { return &SkillLoadedOutputItem{} },
 		string(OutputItemTypeAdvisorResult):     func() any { return &AdvisorResultOutputItem{} },
 		string(OutputItemTypeSandboxResults):    func() any { return &SandboxResultsOutputItem{} },
@@ -845,6 +895,14 @@ func (o OutputItem) AsMCPListTools() (*MCPListToolsOutputItem, bool) {
 
 func (o OutputItem) AsMCPCall() (*MCPCallOutputItem, bool) {
 	v, ok := o.value.(MCPCallOutputItem)
+	if !ok {
+		return nil, false
+	}
+	return &v, true
+}
+
+func (o OutputItem) AsToolSearch() (*ToolSearchOutputItem, bool) {
+	v, ok := o.value.(ToolSearchOutputItem)
 	if !ok {
 		return nil, false
 	}
@@ -1295,6 +1353,8 @@ func dereferenceVariant(value any) any {
 		return *v
 	case *MCPTool:
 		return *v
+	case *ConnectorTool:
+		return *v
 	case *BuiltinSkill:
 		return *v
 	case *InlineSkill:
@@ -1310,6 +1370,8 @@ func dereferenceVariant(value any) any {
 	case *MCPListToolsOutputItem:
 		return *v
 	case *MCPCallOutputItem:
+		return *v
+	case *ToolSearchOutputItem:
 		return *v
 	case *SkillLoadedOutputItem:
 		return *v

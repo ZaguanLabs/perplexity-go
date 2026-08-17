@@ -272,6 +272,75 @@ func TestNewResponseVariants(t *testing.T) {
 	}
 }
 
+func TestPython0433ResponseAdditions(t *testing.T) {
+	connector := NewToolFromConnector(ConnectorTool{
+		ID:                "conn_1",
+		ServerLabel:       "github",
+		Type:              ToolTypeConnector,
+		AllowedTools:      []string{"search"},
+		ServerDescription: types.String("GitHub connector"),
+	})
+	deferLoading := true
+	temperature := 0.4
+	topP := 0.8
+	payload, err := json.Marshal(CreateParams{
+		Input:       Input{Text: types.String("hello")},
+		Temperature: &temperature,
+		TopP:        &topP,
+		Tools: []Tool{
+			connector,
+			NewToolFromMCP(MCPTool{
+				ServerLabel:  "docs",
+				ServerURL:    "https://example.test/mcp",
+				Type:         ToolTypeMCP,
+				DeferLoading: &deferLoading,
+			}),
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, expected := range []string{
+		`"type":"connector"`,
+		`"server_description":"GitHub connector"`,
+		`"defer_loading":true`,
+		`"temperature":0.4`,
+		`"top_p":0.8`,
+	} {
+		if !strings.Contains(string(payload), expected) {
+			t.Fatalf("payload %s missing %s", payload, expected)
+		}
+	}
+
+	var decoded Tool
+	if err := json.Unmarshal([]byte(`{"id":"conn_1","server_label":"github","type":"connector"}`), &decoded); err != nil {
+		t.Fatal(err)
+	}
+	if value, ok := decoded.AsConnector(); !ok || value.ID != "conn_1" {
+		t.Fatalf("connector = %#v, %t", value, ok)
+	}
+
+	toolSearchJSON := `{"type":"tool_search_output","id":"ts_1","call_id":null,"execution":"server","status":"completed","tools":[{"description":"repo tools","name":"github","type":"namespace","tools":[{"name":"search","type":"function","parameters":{"type":"object"}}]}]}`
+	var item OutputItem
+	if err := json.Unmarshal([]byte(toolSearchJSON), &item); err != nil {
+		t.Fatal(err)
+	}
+	search, ok := item.AsToolSearch()
+	if !ok || len(search.Tools) != 1 || len(search.Tools[0].Tools) != 1 || search.Tools[0].Tools[0].Name != "search" {
+		t.Fatalf("tool search = %#v", search)
+	}
+
+	connectorID := "conn_1"
+	mcp := NewOutputItemFromMCPCall(MCPCallOutputItem{
+		ID: "mcp_1", Arguments: "{}", Name: "search", ServerLabel: "github",
+		Type: OutputItemTypeMCPCall, ConnectorID: &connectorID,
+	})
+	mcpJSON, err := json.Marshal(mcp)
+	if err != nil || !strings.Contains(string(mcpJSON), `"connector_id":"conn_1"`) {
+		t.Fatalf("MCP output = %s, %v", mcpJSON, err)
+	}
+}
+
 func TestInput_JSONVariants(t *testing.T) {
 	t.Run("string input", func(t *testing.T) {
 		payload := Input{Text: types.String("hello")}

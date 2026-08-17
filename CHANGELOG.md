@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.5.0] - 2026-08-17
+
+### Added
+- Added Responses connector and namespace tools, including typed connector configuration and namespace function definitions.
+- Added the `tool_search_output` response item variant.
+- Added `temperature` and `top_p` to Responses create parameters.
+- Added MCP `connector_id` response metadata and request-side `defer_loading`.
+
+### Changed
+- Updated the official Python compatibility target to `0.43.3` and the Go SDK version to `1.5.0`.
+- Reviewed the complete official Python v0.43.1-to-v0.43.3 public API delta.
+
+### Packaging note
+- The upstream tag still has the PEP 639/setuptools classifier conflict documented for v0.43.1. The pristine v0.43.3 source is retained, and the built artifact was produced from a temporary metadata-only workaround.
+
 ## [1.4.0] - 2026-08-08
 
 ### Added
