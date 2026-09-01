@@ -341,6 +341,71 @@ func TestPython0433ResponseAdditions(t *testing.T) {
 	}
 }
 
+func TestPython0435ResponseAdditions(t *testing.T) {
+	version := "v2"
+	profile := &ProfileReference{ID: "profile_1", Type: ProfileReferenceTypeCustom, Version: &version}
+	customSkill := NewSkillFromCustom(CustomSkill{ID: "skill_1", Type: SkillTypeCustom, Version: &version})
+	status := FunctionCallOutputStatusCompleted
+	detail := FunctionCallOutputImageDetailHigh
+	output := NewInputItemFromFunctionCallOutput(FunctionCallOutputInput{
+		CallID: "call_1",
+		Type:   InputItemTypeFunctionCallOutput,
+		Status: &status,
+		Output: []FunctionCallOutputPart{
+			{Type: FunctionCallOutputPartTypeText, Text: types.String("done")},
+			{Type: FunctionCallOutputPartTypeImage, ImageURL: types.String("https://example.test/result.png"), Detail: &detail},
+		},
+	})
+	reasoningStatus := ReasoningInputStatusCompleted
+	reasoning := NewInputItemFromReasoning(ReasoningInputItem{
+		Type:    InputItemTypeReasoning,
+		Status:  &reasoningStatus,
+		Summary: []ReasoningSummaryInput{{Text: "checked", Type: ReasoningSummaryTypeText}},
+		Content: []ReasoningTextInput{{Text: "internal", Type: ReasoningTextTypeText}},
+	})
+
+	payload, err := json.Marshal(CreateParams{
+		Input:   Input{Items: []InputItem{output, reasoning}},
+		Profile: profile,
+		Skills:  []Skill{customSkill},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, expected := range []string{
+		`"profile":{"id":"profile_1","type":"custom","version":"v2"}`,
+		`"skills":[{"id":"skill_1","type":"custom","version":"v2"}]`,
+		`"type":"input_image"`,
+		`"status":"completed"`,
+		`"type":"reasoning"`,
+		`"type":"summary_text"`,
+	} {
+		if !strings.Contains(string(payload), expected) {
+			t.Fatalf("payload %s missing %s", payload, expected)
+		}
+	}
+
+	var decoded Input
+	if err := json.Unmarshal([]byte(`[{"type":"reasoning","summary":[{"text":"checked","type":"summary_text"}]}]`), &decoded); err != nil {
+		t.Fatal(err)
+	}
+	if len(decoded.Items) != 1 {
+		t.Fatalf("decoded items = %d", len(decoded.Items))
+	}
+	item, ok := decoded.Items[0].AsReasoning()
+	if !ok || len(item.Summary) != 1 || item.Summary[0].Text != "checked" {
+		t.Fatalf("reasoning = %#v, %t", item, ok)
+	}
+
+	var decodedSkill Skill
+	if err := json.Unmarshal([]byte(`{"id":"skill_1","type":"custom"}`), &decodedSkill); err != nil {
+		t.Fatal(err)
+	}
+	if skill, ok := decodedSkill.AsCustom(); !ok || skill.ID != "skill_1" {
+		t.Fatalf("custom skill = %#v, %t", skill, ok)
+	}
+}
+
 func TestInput_JSONVariants(t *testing.T) {
 	t.Run("string input", func(t *testing.T) {
 		payload := Input{Text: types.String("hello")}

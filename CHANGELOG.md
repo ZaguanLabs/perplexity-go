@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.6.0] - 2026-09-01
+
+### Added
+- Added Responses profile references and custom skills from Python SDK v0.43.5.
+- Added reasoning input replay items with summary, optional reasoning content, encryption, identity, and status fields.
+- Expanded function-call outputs with optional identity/status and text/image output-part arrays while retaining string-output compatibility.
+
+### Changed
+- Updated the official Python compatibility target to `0.43.5` and the Go SDK version to `1.6.0`.
+- Reviewed the complete official Python v0.43.3-to-v0.43.5 public API delta.
+
+### Packaging note
+- The upstream tag has a setuptools license-expression/classifier conflict. The pristine source was restored after a temporary metadata-only build workaround.
+
 ## [1.5.0] - 2026-08-17
 
 ### Added

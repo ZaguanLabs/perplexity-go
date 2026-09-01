@@ -20,6 +20,18 @@ type InputMessageContentPartType string
 
 type InputItemType string
 
+type FunctionCallOutputPartType string
+
+type FunctionCallOutputImageDetail string
+
+type FunctionCallOutputStatus string
+
+type ReasoningInputStatus string
+
+type ReasoningSummaryType string
+
+type ReasoningTextType string
+
 type ToolType string
 
 type SearchContextSize string
@@ -35,6 +47,8 @@ type MessageOutputRole string
 type SearchResultSource string
 
 type SkillType string
+
+type ProfileReferenceType string
 
 const (
 	StatusCompleted      Status = "completed"
@@ -79,6 +93,25 @@ const (
 	InputItemTypeMessage            InputItemType = "message"
 	InputItemTypeFunctionCall       InputItemType = "function_call"
 	InputItemTypeFunctionCallOutput InputItemType = "function_call_output"
+	InputItemTypeReasoning          InputItemType = "reasoning"
+
+	FunctionCallOutputPartTypeText  FunctionCallOutputPartType = "input_text"
+	FunctionCallOutputPartTypeImage FunctionCallOutputPartType = "input_image"
+
+	FunctionCallOutputImageDetailLow  FunctionCallOutputImageDetail = "low"
+	FunctionCallOutputImageDetailHigh FunctionCallOutputImageDetail = "high"
+	FunctionCallOutputImageDetailAuto FunctionCallOutputImageDetail = "auto"
+
+	FunctionCallOutputStatusInProgress FunctionCallOutputStatus = "in_progress"
+	FunctionCallOutputStatusCompleted  FunctionCallOutputStatus = "completed"
+	FunctionCallOutputStatusIncomplete FunctionCallOutputStatus = "incomplete"
+
+	ReasoningInputStatusInProgress ReasoningInputStatus = "in_progress"
+	ReasoningInputStatusCompleted  ReasoningInputStatus = "completed"
+	ReasoningInputStatusIncomplete ReasoningInputStatus = "incomplete"
+
+	ReasoningSummaryTypeText ReasoningSummaryType = "summary_text"
+	ReasoningTextTypeText    ReasoningTextType    = "reasoning_text"
 
 	ToolTypeWebSearch     ToolType = "web_search"
 	ToolTypeFetchURL      ToolType = "fetch_url"
@@ -92,6 +125,9 @@ const (
 
 	SkillTypeBuiltin SkillType = "builtin"
 	SkillTypeInline  SkillType = "inline"
+	SkillTypeCustom  SkillType = "custom"
+
+	ProfileReferenceTypeCustom ProfileReferenceType = "custom"
 
 	SearchContextSizeLow    SearchContextSize = "low"
 	SearchContextSizeMedium SearchContextSize = "medium"
@@ -173,11 +209,22 @@ type InputMessage struct {
 }
 
 type FunctionCallOutputInput struct {
-	CallID           string        `json:"call_id"`
-	Output           string        `json:"output"`
-	Type             InputItemType `json:"type"`
-	Name             *string       `json:"name,omitempty"`
-	ThoughtSignature *string       `json:"thought_signature,omitempty"`
+	CallID           string                    `json:"call_id"`
+	Output           any                       `json:"output"`
+	Type             InputItemType             `json:"type"`
+	ID               *string                   `json:"id,omitempty"`
+	Name             *string                   `json:"name,omitempty"`
+	Status           *FunctionCallOutputStatus `json:"status,omitempty"`
+	ThoughtSignature *string                   `json:"thought_signature,omitempty"`
+}
+
+// FunctionCallOutputPart represents a text or image part returned by a tool.
+// Text is used with input_text; ImageURL and Detail are used with input_image.
+type FunctionCallOutputPart struct {
+	Type     FunctionCallOutputPartType     `json:"type"`
+	Text     *string                        `json:"text,omitempty"`
+	ImageURL *string                        `json:"image_url,omitempty"`
+	Detail   *FunctionCallOutputImageDetail `json:"detail,omitempty"`
 }
 
 type FunctionCallInput struct {
@@ -186,6 +233,25 @@ type FunctionCallInput struct {
 	Name             string        `json:"name"`
 	Type             InputItemType `json:"type"`
 	ThoughtSignature *string       `json:"thought_signature,omitempty"`
+}
+
+type ReasoningSummaryInput struct {
+	Text string               `json:"text"`
+	Type ReasoningSummaryType `json:"type"`
+}
+
+type ReasoningTextInput struct {
+	Text string            `json:"text"`
+	Type ReasoningTextType `json:"type"`
+}
+
+type ReasoningInputItem struct {
+	Summary          []ReasoningSummaryInput `json:"summary"`
+	Type             InputItemType           `json:"type"`
+	Content          []ReasoningTextInput    `json:"content,omitempty"`
+	EncryptedContent *string                 `json:"encrypted_content,omitempty"`
+	ID               *string                 `json:"id,omitempty"`
+	Status           *ReasoningInputStatus   `json:"status,omitempty"`
 }
 
 type InputItem struct {
@@ -200,6 +266,8 @@ func NewInputItemFromFunctionCallOutput(v FunctionCallOutputInput) InputItem {
 
 func NewInputItemFromFunctionCall(v FunctionCallInput) InputItem { return InputItem{value: v} }
 
+func NewInputItemFromReasoning(v ReasoningInputItem) InputItem { return InputItem{value: v} }
+
 func (i InputItem) MarshalJSON() ([]byte, error) {
 	return marshalUnionValue(i.value)
 }
@@ -209,6 +277,7 @@ func (i *InputItem) UnmarshalJSON(data []byte) error {
 		string(InputItemTypeMessage):            func() any { return &InputMessage{} },
 		string(InputItemTypeFunctionCallOutput): func() any { return &FunctionCallOutputInput{} },
 		string(InputItemTypeFunctionCall):       func() any { return &FunctionCallInput{} },
+		string(InputItemTypeReasoning):          func() any { return &ReasoningInputItem{} },
 	})
 	if err != nil {
 		return err
@@ -235,6 +304,14 @@ func (i InputItem) AsFunctionCallOutput() (*FunctionCallOutputInput, bool) {
 
 func (i InputItem) AsFunctionCall() (*FunctionCallInput, bool) {
 	v, ok := i.value.(FunctionCallInput)
+	if ok {
+		return &v, true
+	}
+	return nil, false
+}
+
+func (i InputItem) AsReasoning() (*ReasoningInputItem, bool) {
+	v, ok := i.value.(ReasoningInputItem)
 	if ok {
 		return &v, true
 	}
@@ -292,6 +369,12 @@ type InlineSkill struct {
 	Type         SkillType `json:"type"`
 }
 
+type CustomSkill struct {
+	ID      string    `json:"id"`
+	Type    SkillType `json:"type"`
+	Version *string   `json:"version,omitempty"`
+}
+
 type Skill struct {
 	value any
 }
@@ -300,12 +383,15 @@ func NewSkillFromBuiltin(v BuiltinSkill) Skill { return Skill{value: v} }
 
 func NewSkillFromInline(v InlineSkill) Skill { return Skill{value: v} }
 
+func NewSkillFromCustom(v CustomSkill) Skill { return Skill{value: v} }
+
 func (s Skill) MarshalJSON() ([]byte, error) { return marshalUnionValue(s.value) }
 
 func (s *Skill) UnmarshalJSON(data []byte) error {
 	variant, err := unmarshalByTypeField(data, map[string]func() any{
 		string(SkillTypeBuiltin): func() any { return &BuiltinSkill{} },
 		string(SkillTypeInline):  func() any { return &InlineSkill{} },
+		string(SkillTypeCustom):  func() any { return &CustomSkill{} },
 	})
 	if err != nil {
 		return err
@@ -328,6 +414,20 @@ func (s Skill) AsInline() (*InlineSkill, bool) {
 		return nil, false
 	}
 	return &v, true
+}
+
+func (s Skill) AsCustom() (*CustomSkill, bool) {
+	v, ok := s.value.(CustomSkill)
+	if !ok {
+		return nil, false
+	}
+	return &v, true
+}
+
+type ProfileReference struct {
+	ID      string               `json:"id"`
+	Type    ProfileReferenceType `json:"type"`
+	Version *string              `json:"version,omitempty"`
 }
 
 type WebSearchToolFilters struct {
@@ -512,24 +612,25 @@ type ResponseFormat struct {
 }
 
 type CreateParams struct {
-	Input              Input           `json:"input"`
-	Background         *bool           `json:"background,omitempty"`
-	Instructions       *string         `json:"instructions,omitempty"`
-	LanguagePreference *string         `json:"language_preference,omitempty"`
-	MaxOutputTokens    *int            `json:"max_output_tokens,omitempty"`
-	MaxSteps           *int            `json:"max_steps,omitempty"`
-	Model              *string         `json:"model,omitempty"`
-	Models             []string        `json:"models,omitempty"`
-	Preset             *string         `json:"preset,omitempty"`
-	PreviousResponseID *string         `json:"previous_response_id,omitempty"`
-	Reasoning          *Reasoning      `json:"reasoning,omitempty"`
-	ResponseFormat     *ResponseFormat `json:"response_format,omitempty"`
-	Skills             []Skill         `json:"skills,omitempty"`
-	Store              *bool           `json:"store,omitempty"`
-	Stream             *bool           `json:"stream,omitempty"`
-	Temperature        *float64        `json:"temperature,omitempty"`
-	Tools              []Tool          `json:"tools,omitempty"`
-	TopP               *float64        `json:"top_p,omitempty"`
+	Input              Input             `json:"input"`
+	Background         *bool             `json:"background,omitempty"`
+	Instructions       *string           `json:"instructions,omitempty"`
+	LanguagePreference *string           `json:"language_preference,omitempty"`
+	MaxOutputTokens    *int              `json:"max_output_tokens,omitempty"`
+	MaxSteps           *int              `json:"max_steps,omitempty"`
+	Model              *string           `json:"model,omitempty"`
+	Models             []string          `json:"models,omitempty"`
+	Preset             *string           `json:"preset,omitempty"`
+	PreviousResponseID *string           `json:"previous_response_id,omitempty"`
+	Profile            *ProfileReference `json:"profile,omitempty"`
+	Reasoning          *Reasoning        `json:"reasoning,omitempty"`
+	ResponseFormat     *ResponseFormat   `json:"response_format,omitempty"`
+	Skills             []Skill           `json:"skills,omitempty"`
+	Store              *bool             `json:"store,omitempty"`
+	Stream             *bool             `json:"stream,omitempty"`
+	Temperature        *float64          `json:"temperature,omitempty"`
+	Tools              []Tool            `json:"tools,omitempty"`
+	TopP               *float64          `json:"top_p,omitempty"`
 }
 
 type ErrorInfo struct {
@@ -1339,6 +1440,8 @@ func dereferenceVariant(value any) any {
 		return *v
 	case *FunctionCallInput:
 		return *v
+	case *ReasoningInputItem:
+		return *v
 	case *WebSearchTool:
 		return *v
 	case *FetchURLTool:
@@ -1358,6 +1461,8 @@ func dereferenceVariant(value any) any {
 	case *BuiltinSkill:
 		return *v
 	case *InlineSkill:
+		return *v
+	case *CustomSkill:
 		return *v
 	case *MessageOutputItem:
 		return *v

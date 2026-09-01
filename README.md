@@ -6,7 +6,7 @@
 
 An **unofficial**, community-maintained Go client library for the [Perplexity API](https://docs.perplexity.ai/). This SDK provides idiomatic Go interfaces for chat completions, streaming responses, and web search.
 
-**Current parity target:** official Perplexity Python SDK `0.43.3` (Go SDK `1.5.0`).
+**Current parity target:** official Perplexity Python SDK `0.43.5` (Go SDK `1.6.0`).
 
 > ⚠️ **Disclaimer**: This is an unofficial SDK and is not affiliated with, endorsed by, or supported by Perplexity AI. For official support, please refer to the [Perplexity API documentation](https://docs.perplexity.ai/).
 
