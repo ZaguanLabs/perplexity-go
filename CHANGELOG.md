@@ -5,6 +5,11 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.0] - 2026-10-02
+
+- Align with official Python SDK 0.43.6: fast search, Responses web-search mode selection, and disabled reasoning (`none`).
+- Preserve existing search modes and optional-field omission.
+
 ## [1.6.0] - 2026-09-01
 
 ### Added

@@ -85,7 +85,7 @@ type SearchParams struct {
 	// SearchRecencyFilter filters by recency (optional).
 	SearchRecencyFilter *chat.SearchRecencyFilter `json:"search_recency_filter,omitempty"`
 
-	// SearchType selects general web or people search (optional).
+	// SearchType selects general web, fast, or people search (optional).
 	SearchType *SearchType `json:"search_type,omitempty"`
 }
 
@@ -93,6 +93,7 @@ type SearchType string
 
 const (
 	SearchTypeWeb    SearchType = "web"
+	SearchTypeFast   SearchType = "fast"
 	SearchTypePeople SearchType = "people"
 )
 

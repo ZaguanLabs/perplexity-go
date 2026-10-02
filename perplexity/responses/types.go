@@ -10,6 +10,14 @@ type Status string
 
 type ReasoningEffort string
 
+// WebSearchType selects the Responses web-search mode.
+type WebSearchType string
+
+const (
+	WebSearchTypeWeb  WebSearchType = "web"
+	WebSearchTypeFast WebSearchType = "fast"
+)
+
 type EventType string
 
 type InputMessageRole string
@@ -58,6 +66,7 @@ const (
 	StatusCancelled      Status = "cancelled"
 	StatusRequiresAction Status = "requires_action"
 
+	ReasoningEffortNone    ReasoningEffort = "none"
 	ReasoningEffortMinimal ReasoningEffort = "minimal"
 	ReasoningEffortLow     ReasoningEffort = "low"
 	ReasoningEffortMedium  ReasoningEffort = "medium"
@@ -448,6 +457,7 @@ type UserLocation struct {
 }
 
 type WebSearchTool struct {
+	SearchType        *WebSearchType        `json:"search_type,omitempty"`
 	Type              ToolType              `json:"type"`
 	Filters           *WebSearchToolFilters `json:"filters,omitempty"`
 	MaxTokens         *int                  `json:"max_tokens,omitempty"`
