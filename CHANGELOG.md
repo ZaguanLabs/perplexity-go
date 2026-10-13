@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.8.0] - 2026-10-13
+
+- Align with official Python SDK 0.43.8: image-search tools, results and streaming events; file input parts; Responses tool-choice selection.
+- Add MCP approval filters, requests and decisions, call/list-tool replay, approval linkage and tool annotations.
+- Register namespace tools in the tagged tool union.
+- Preserve explicit false approval decisions and optional filter values.
+
 ## [1.7.0] - 2026-10-02
 
 - Align with official Python SDK 0.43.6: fast search, Responses web-search mode selection, and disabled reasoning (`none`).

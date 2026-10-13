@@ -171,6 +171,9 @@ const (
 )
 
 type InputMessageContentPart struct {
+	FileData *string                     `json:"file_data,omitempty"`
+	FileURL  *string                     `json:"file_url,omitempty"`
+	Filename *string                     `json:"filename,omitempty"`
 	Type     InputMessageContentPartType `json:"type"`
 	ImageURL *string                     `json:"image_url,omitempty"`
 	Text     *string                     `json:"text,omitempty"`
@@ -283,10 +286,14 @@ func (i InputItem) MarshalJSON() ([]byte, error) {
 
 func (i *InputItem) UnmarshalJSON(data []byte) error {
 	variant, err := unmarshalByTypeField(data, map[string]func() any{
-		string(InputItemTypeMessage):            func() any { return &InputMessage{} },
-		string(InputItemTypeFunctionCallOutput): func() any { return &FunctionCallOutputInput{} },
-		string(InputItemTypeFunctionCall):       func() any { return &FunctionCallInput{} },
-		string(InputItemTypeReasoning):          func() any { return &ReasoningInputItem{} },
+		string(InputItemTypeMCPListTools):        func() any { return &MCPListToolsInput{} },
+		string(InputItemTypeMCPCall):             func() any { return &MCPCallOutputItem{} },
+		string(InputItemTypeMCPApprovalRequest):  func() any { return &MCPApprovalRequest{} },
+		string(InputItemTypeMCPApprovalResponse): func() any { return &MCPApprovalResponseInput{} },
+		string(InputItemTypeMessage):             func() any { return &InputMessage{} },
+		string(InputItemTypeFunctionCallOutput):  func() any { return &FunctionCallOutputInput{} },
+		string(InputItemTypeFunctionCall):        func() any { return &FunctionCallInput{} },
+		string(InputItemTypeReasoning):           func() any { return &ReasoningInputItem{} },
 	})
 	if err != nil {
 		return err
@@ -484,21 +491,23 @@ type SandboxTool struct {
 }
 
 type MCPTool struct {
-	ServerLabel   string            `json:"server_label"`
-	ServerURL     string            `json:"server_url"`
-	Type          ToolType          `json:"type"`
-	AllowedTools  []string          `json:"allowed_tools,omitempty"`
-	Authorization *string           `json:"authorization,omitempty"`
-	DeferLoading  *bool             `json:"defer_loading,omitempty"`
-	Headers       map[string]string `json:"headers,omitempty"`
+	RequireApproval *RequireApproval  `json:"require_approval,omitempty"`
+	ServerLabel     string            `json:"server_label"`
+	ServerURL       string            `json:"server_url"`
+	Type            ToolType          `json:"type"`
+	AllowedTools    []string          `json:"allowed_tools,omitempty"`
+	Authorization   *string           `json:"authorization,omitempty"`
+	DeferLoading    *bool             `json:"defer_loading,omitempty"`
+	Headers         map[string]string `json:"headers,omitempty"`
 }
 
 type ConnectorTool struct {
-	ID                string   `json:"id"`
-	ServerLabel       string   `json:"server_label"`
-	Type              ToolType `json:"type"`
-	AllowedTools      []string `json:"allowed_tools,omitempty"`
-	ServerDescription *string  `json:"server_description,omitempty"`
+	RequireApproval   *RequireApproval `json:"require_approval,omitempty"`
+	ID                string           `json:"id"`
+	ServerLabel       string           `json:"server_label"`
+	Type              ToolType         `json:"type"`
+	AllowedTools      []string         `json:"allowed_tools,omitempty"`
+	ServerDescription *string          `json:"server_description,omitempty"`
 }
 
 type FunctionTool struct {
@@ -535,6 +544,8 @@ func (t Tool) MarshalJSON() ([]byte, error) {
 
 func (t *Tool) UnmarshalJSON(data []byte) error {
 	variant, err := unmarshalByTypeField(data, map[string]func() any{
+		string(ToolTypeNamespace):     func() any { return &NamespaceTool{} },
+		string(ToolTypeImageSearch):   func() any { return &ImageSearchTool{} },
 		string(ToolTypeWebSearch):     func() any { return &WebSearchTool{} },
 		string(ToolTypeFetchURL):      func() any { return &FetchURLTool{} },
 		string(ToolTypeFunction):      func() any { return &FunctionTool{} },
@@ -622,6 +633,7 @@ type ResponseFormat struct {
 }
 
 type CreateParams struct {
+	ToolChoice         any               `json:"tool_choice,omitempty"`
 	Input              Input             `json:"input"`
 	Background         *bool             `json:"background,omitempty"`
 	Instructions       *string           `json:"instructions,omitempty"`
@@ -737,9 +749,10 @@ type FunctionCallOutputItem struct {
 }
 
 type MCPListToolsTool struct {
-	InputSchema map[string]any `json:"input_schema"`
-	Name        string         `json:"name"`
-	Description *string        `json:"description,omitempty"`
+	Annotations *MCPToolDefAnnotations `json:"annotations,omitempty"`
+	InputSchema map[string]any         `json:"input_schema"`
+	Name        string                 `json:"name"`
+	Description *string                `json:"description,omitempty"`
 }
 
 type MCPListToolsOutputItem struct {
@@ -752,14 +765,15 @@ type MCPListToolsOutputItem struct {
 }
 
 type MCPCallOutputItem struct {
-	ID          string         `json:"id"`
-	Arguments   string         `json:"arguments"`
-	Name        string         `json:"name"`
-	ServerLabel string         `json:"server_label"`
-	Type        OutputItemType `json:"type"`
-	Error       *string        `json:"error,omitempty"`
-	Output      *string        `json:"output,omitempty"`
-	ConnectorID *string        `json:"connector_id,omitempty"`
+	ApprovalRequestID *string        `json:"approval_request_id,omitempty"`
+	ID                string         `json:"id"`
+	Arguments         string         `json:"arguments"`
+	Name              string         `json:"name"`
+	ServerLabel       string         `json:"server_label"`
+	Type              OutputItemType `json:"type"`
+	Error             *string        `json:"error,omitempty"`
+	Output            *string        `json:"output,omitempty"`
+	ConnectorID       *string        `json:"connector_id,omitempty"`
 }
 
 type NamespaceToolDef struct {
@@ -938,24 +952,26 @@ func (o OutputItem) MarshalJSON() ([]byte, error) {
 
 func (o *OutputItem) UnmarshalJSON(data []byte) error {
 	variant, err := unmarshalByTypeField(data, map[string]func() any{
-		string(OutputItemTypeMessage):           func() any { return &MessageOutputItem{} },
-		string(OutputItemTypeSearchResults):     func() any { return &SearchResultsOutputItem{} },
-		string(OutputItemTypeFetchURLResults):   func() any { return &FetchURLResultsOutputItem{} },
-		string(OutputItemTypeFunctionCall):      func() any { return &FunctionCallOutputItem{} },
-		string(OutputItemTypeMCPListTools):      func() any { return &MCPListToolsOutputItem{} },
-		string(OutputItemTypeMCPCall):           func() any { return &MCPCallOutputItem{} },
-		string(OutputItemTypeToolSearch):        func() any { return &ToolSearchOutputItem{} },
-		string(OutputItemTypeSkillLoaded):       func() any { return &SkillLoadedOutputItem{} },
-		string(OutputItemTypeAdvisorResult):     func() any { return &AdvisorResultOutputItem{} },
-		string(OutputItemTypeSandboxResults):    func() any { return &SandboxResultsOutputItem{} },
-		string(OutputItemTypeSandboxWriteFile):  func() any { return &SandboxWriteFileOutputItem{} },
-		string(OutputItemTypeSandboxReadFile):   func() any { return &SandboxReadFileOutputItem{} },
-		string(OutputItemTypeSandboxEditFile):   func() any { return &SandboxEditFileOutputItem{} },
-		string(OutputItemTypeSandboxGrep):       func() any { return &SandboxGrepOutputItem{} },
-		string(OutputItemTypeSandboxGlob):       func() any { return &SandboxGlobOutputItem{} },
-		string(OutputItemTypeSandboxApplyPatch): func() any { return &SandboxApplyPatchOutputItem{} },
-		string(OutputItemTypeShareFile):         func() any { return &ShareFileOutputItem{} },
-		string(OutputItemTypeUnknown):           func() any { return &UnknownOutputItem{} },
+		string(OutputItemTypeMCPApprovalRequest): func() any { return &MCPApprovalRequest{} },
+		string(OutputItemTypeImageSearchResults): func() any { return &ImageSearchResultsOutputItem{} },
+		string(OutputItemTypeMessage):            func() any { return &MessageOutputItem{} },
+		string(OutputItemTypeSearchResults):      func() any { return &SearchResultsOutputItem{} },
+		string(OutputItemTypeFetchURLResults):    func() any { return &FetchURLResultsOutputItem{} },
+		string(OutputItemTypeFunctionCall):       func() any { return &FunctionCallOutputItem{} },
+		string(OutputItemTypeMCPListTools):       func() any { return &MCPListToolsOutputItem{} },
+		string(OutputItemTypeMCPCall):            func() any { return &MCPCallOutputItem{} },
+		string(OutputItemTypeToolSearch):         func() any { return &ToolSearchOutputItem{} },
+		string(OutputItemTypeSkillLoaded):        func() any { return &SkillLoadedOutputItem{} },
+		string(OutputItemTypeAdvisorResult):      func() any { return &AdvisorResultOutputItem{} },
+		string(OutputItemTypeSandboxResults):     func() any { return &SandboxResultsOutputItem{} },
+		string(OutputItemTypeSandboxWriteFile):   func() any { return &SandboxWriteFileOutputItem{} },
+		string(OutputItemTypeSandboxReadFile):    func() any { return &SandboxReadFileOutputItem{} },
+		string(OutputItemTypeSandboxEditFile):    func() any { return &SandboxEditFileOutputItem{} },
+		string(OutputItemTypeSandboxGrep):        func() any { return &SandboxGrepOutputItem{} },
+		string(OutputItemTypeSandboxGlob):        func() any { return &SandboxGlobOutputItem{} },
+		string(OutputItemTypeSandboxApplyPatch):  func() any { return &SandboxApplyPatchOutputItem{} },
+		string(OutputItemTypeShareFile):          func() any { return &ShareFileOutputItem{} },
+		string(OutputItemTypeUnknown):            func() any { return &UnknownOutputItem{} },
 	})
 	if err != nil {
 		return err
@@ -1109,6 +1125,7 @@ func (o OutputItem) AsUnknown() (*UnknownOutputItem, bool) {
 }
 
 type CreateResponse struct {
+	ToolChoice         any          `json:"tool_choice,omitempty"`
 	ID                 string       `json:"id"`
 	CreatedAt          int64        `json:"created_at"`
 	Model              string       `json:"model"`
@@ -1274,21 +1291,23 @@ func (e StreamEvent) MarshalJSON() ([]byte, error) {
 
 func (e *StreamEvent) UnmarshalJSON(data []byte) error {
 	variant, err := unmarshalByTypeField(data, map[string]func() any{
-		string(EventTypeResponseCreated):          func() any { return &ResponseCreatedEvent{} },
-		string(EventTypeResponseInProgress):       func() any { return &ResponseInProgressEvent{} },
-		string(EventTypeResponseCompleted):        func() any { return &ResponseCompletedEvent{} },
-		string(EventTypeResponseFailed):           func() any { return &ResponseFailedEvent{} },
-		string(EventTypeOutputItemAdded):          func() any { return &OutputItemAddedEvent{} },
-		string(EventTypeOutputItemDone):           func() any { return &OutputItemDoneEvent{} },
-		string(EventTypeOutputTextDelta):          func() any { return &TextDeltaEvent{} },
-		string(EventTypeOutputTextDone):           func() any { return &TextDoneEvent{} },
-		string(EventTypeReasoningStarted):         func() any { return &ReasoningStartedEvent{} },
-		string(EventTypeReasoningSearchQueries):   func() any { return &SearchQueriesEvent{} },
-		string(EventTypeReasoningSearchResults):   func() any { return &SearchResultsEvent{} },
-		string(EventTypeReasoningFetchURLQueries): func() any { return &FetchURLQueriesEvent{} },
-		string(EventTypeReasoningFetchURLResults): func() any { return &FetchURLResultsEvent{} },
-		string(EventTypeReasoningStopped):         func() any { return &ReasoningStoppedEvent{} },
-		string(EventTypeSkillLoaded):              func() any { return &SkillLoadedEvent{} },
+		string(EventTypeReasoningImageSearchResults): func() any { return &ImageSearchResultsEvent{} },
+		string(EventTypeReasoningImageSearchQueries): func() any { return &ImageSearchQueriesEvent{} },
+		string(EventTypeResponseCreated):             func() any { return &ResponseCreatedEvent{} },
+		string(EventTypeResponseInProgress):          func() any { return &ResponseInProgressEvent{} },
+		string(EventTypeResponseCompleted):           func() any { return &ResponseCompletedEvent{} },
+		string(EventTypeResponseFailed):              func() any { return &ResponseFailedEvent{} },
+		string(EventTypeOutputItemAdded):             func() any { return &OutputItemAddedEvent{} },
+		string(EventTypeOutputItemDone):              func() any { return &OutputItemDoneEvent{} },
+		string(EventTypeOutputTextDelta):             func() any { return &TextDeltaEvent{} },
+		string(EventTypeOutputTextDone):              func() any { return &TextDoneEvent{} },
+		string(EventTypeReasoningStarted):            func() any { return &ReasoningStartedEvent{} },
+		string(EventTypeReasoningSearchQueries):      func() any { return &SearchQueriesEvent{} },
+		string(EventTypeReasoningSearchResults):      func() any { return &SearchResultsEvent{} },
+		string(EventTypeReasoningFetchURLQueries):    func() any { return &FetchURLQueriesEvent{} },
+		string(EventTypeReasoningFetchURLResults):    func() any { return &FetchURLResultsEvent{} },
+		string(EventTypeReasoningStopped):            func() any { return &ReasoningStoppedEvent{} },
+		string(EventTypeSkillLoaded):                 func() any { return &SkillLoadedEvent{} },
 	})
 	if err != nil {
 		return err
@@ -1444,6 +1463,22 @@ func unmarshalByTypeField(data []byte, mapping map[string]func() any) (any, erro
 
 func dereferenceVariant(value any) any {
 	switch v := value.(type) {
+	case *NamespaceTool:
+		return *v
+	case *MCPListToolsInput:
+		return *v
+	case *MCPApprovalResponseInput:
+		return *v
+	case *MCPApprovalRequest:
+		return *v
+	case *ImageSearchTool:
+		return *v
+	case *ImageSearchResultsOutputItem:
+		return *v
+	case *ImageSearchResultsEvent:
+		return *v
+	case *ImageSearchQueriesEvent:
+		return *v
 	case *InputMessage:
 		return *v
 	case *FunctionCallOutputInput:
@@ -1543,4 +1578,229 @@ func dereferenceVariant(value any) any {
 	default:
 		return value
 	}
+}
+
+const (
+	InputMessageContentPartTypeFile      InputMessageContentPartType = "input_file"
+	InputItemTypeMCPApprovalResponse     InputItemType               = "mcp_approval_response"
+	InputItemTypeMCPApprovalRequest      InputItemType               = "mcp_approval_request"
+	InputItemTypeMCPCall                 InputItemType               = "mcp_call"
+	InputItemTypeMCPListTools            InputItemType               = "mcp_list_tools"
+	ToolTypeImageSearch                  ToolType                    = "image_search"
+	OutputItemTypeImageSearchResults     OutputItemType              = "image_search_results"
+	OutputItemTypeMCPApprovalRequest     OutputItemType              = "mcp_approval_request"
+	EventTypeReasoningImageSearchQueries EventType                   = "response.reasoning.image_search_queries"
+	EventTypeReasoningImageSearchResults EventType                   = "response.reasoning.image_search_results"
+)
+
+type ApprovalFilter struct {
+	ReadOnly  *bool    `json:"read_only,omitempty"`
+	ToolNames []string `json:"tool_names,omitempty"`
+}
+type ApprovalFilters struct {
+	Always *ApprovalFilter `json:"always,omitempty"`
+	Never  *ApprovalFilter `json:"never,omitempty"`
+}
+
+// RequireApproval is either the mode "always"/"never" or per-tool filters.
+type RequireApproval struct {
+	Mode    string
+	Filters *ApprovalFilters
+}
+
+func (r RequireApproval) MarshalJSON() ([]byte, error) {
+	if r.Filters != nil {
+		return json.Marshal(r.Filters)
+	}
+	if r.Mode != "always" && r.Mode != "never" {
+		return nil, fmt.Errorf("invalid approval mode %q", r.Mode)
+	}
+	return json.Marshal(r.Mode)
+}
+func (r *RequireApproval) UnmarshalJSON(data []byte) error {
+	var mode string
+	if err := json.Unmarshal(data, &mode); err == nil {
+		if mode != "always" && mode != "never" {
+			return fmt.Errorf("invalid approval mode %q", mode)
+		}
+		*r = RequireApproval{Mode: mode}
+		return nil
+	}
+	var filters ApprovalFilters
+	if len(data) == 0 || data[0] != '{' {
+		return fmt.Errorf("approval must be a mode or filters")
+	}
+	if err := json.Unmarshal(data, &filters); err != nil {
+		return err
+	}
+	*r = RequireApproval{Filters: &filters}
+	return nil
+}
+
+type MCPToolDefAnnotations struct {
+	ReadOnly *bool `json:"read_only,omitempty"`
+}
+type MCPApprovalRequest struct {
+	Arguments        string  `json:"arguments"`
+	ConnectorID      *string `json:"connector_id,omitempty"`
+	ID               string  `json:"id"`
+	Name             string  `json:"name"`
+	ServerLabel      string  `json:"server_label"`
+	ThoughtSignature *string `json:"thought_signature,omitempty"`
+	Type             string  `json:"type"`
+}
+type MCPApprovalResponseInput struct {
+	ApprovalRequestID string        `json:"approval_request_id"`
+	Approve           bool          `json:"approve"`
+	ID                *string       `json:"id,omitempty"`
+	Reason            *string       `json:"reason,omitempty"`
+	Type              InputItemType `json:"type"`
+}
+type MCPCallInput = MCPCallOutputItem
+type MCPApprovalRequestInput = MCPApprovalRequest
+type MCPApprovalRequestOutputItem = MCPApprovalRequest
+type MCPListToolsInput struct {
+	Error       *string            `json:"error,omitempty"`
+	ID          *string            `json:"id,omitempty"`
+	ServerLabel *string            `json:"server_label,omitempty"`
+	Tools       []MCPListToolsTool `json:"tools,omitempty"`
+	Type        InputItemType      `json:"type"`
+}
+type ImageResult struct {
+	Height    int     `json:"height"`
+	ImageURL  string  `json:"image_url"`
+	OriginURL string  `json:"origin_url"`
+	Title     *string `json:"title,omitempty"`
+	Width     int     `json:"width"`
+}
+type ImageSearchFilters struct {
+	DomainFilter []string `json:"domain_filter,omitempty"`
+	FormatFilter []string `json:"format_filter,omitempty"`
+	SafeSearch   *bool    `json:"safe_search,omitempty"`
+}
+type ImageSearchTool struct {
+	Filters    *ImageSearchFilters `json:"filters,omitempty"`
+	MaxResults *int                `json:"max_results,omitempty"`
+	Type       ToolType            `json:"type"`
+}
+type ImageSearchResultsOutputItem struct {
+	Error   *string        `json:"error,omitempty"`
+	Queries []string       `json:"queries,omitempty"`
+	Results []ImageResult  `json:"results"`
+	Type    OutputItemType `json:"type"`
+}
+type ImageSearchQueriesEvent struct {
+	CallID         string    `json:"call_id"`
+	Queries        []string  `json:"queries"`
+	SequenceNumber int       `json:"sequence_number"`
+	Thought        *string   `json:"thought,omitempty"`
+	Type           EventType `json:"type"`
+}
+type ImageSearchResultsEvent struct {
+	CallID         string        `json:"call_id"`
+	Results        []ImageResult `json:"results"`
+	SequenceNumber int           `json:"sequence_number"`
+	Thought        *string       `json:"thought,omitempty"`
+	Type           EventType     `json:"type"`
+	Usage          *Usage        `json:"usage,omitempty"`
+}
+
+func NewInputItemFromMCPApprovalResponse(v MCPApprovalResponseInput) InputItem {
+	return InputItem{value: v}
+}
+func (i InputItem) AsMCPApprovalResponse() (*MCPApprovalResponseInput, bool) {
+	v, ok := i.value.(MCPApprovalResponseInput)
+	if !ok {
+		return nil, false
+	}
+	return &v, true
+}
+
+func NewInputItemFromMCPApprovalRequest(v MCPApprovalRequest) InputItem { return InputItem{value: v} }
+func (i InputItem) AsMCPApprovalRequest() (*MCPApprovalRequest, bool) {
+	v, ok := i.value.(MCPApprovalRequest)
+	if !ok {
+		return nil, false
+	}
+	return &v, true
+}
+
+func NewInputItemFromMCPCall(v MCPCallOutputItem) InputItem { return InputItem{value: v} }
+func (i InputItem) AsMCPCall() (*MCPCallOutputItem, bool) {
+	v, ok := i.value.(MCPCallOutputItem)
+	if !ok {
+		return nil, false
+	}
+	return &v, true
+}
+
+func NewInputItemFromMCPListTools(v MCPListToolsInput) InputItem { return InputItem{value: v} }
+func (i InputItem) AsMCPListTools() (*MCPListToolsInput, bool) {
+	v, ok := i.value.(MCPListToolsInput)
+	if !ok {
+		return nil, false
+	}
+	return &v, true
+}
+
+func NewToolFromImageSearch(v ImageSearchTool) Tool { return Tool{value: v} }
+func (t Tool) AsImageSearch() (*ImageSearchTool, bool) {
+	v, ok := t.value.(ImageSearchTool)
+	if !ok {
+		return nil, false
+	}
+	return &v, true
+}
+
+func NewToolFromNamespace(v NamespaceTool) Tool { return Tool{value: v} }
+func (t Tool) AsNamespace() (*NamespaceTool, bool) {
+	v, ok := t.value.(NamespaceTool)
+	if !ok {
+		return nil, false
+	}
+	return &v, true
+}
+
+func NewOutputItemFromImageSearchResults(v ImageSearchResultsOutputItem) OutputItem {
+	return OutputItem{value: v}
+}
+func (o OutputItem) AsImageSearchResults() (*ImageSearchResultsOutputItem, bool) {
+	v, ok := o.value.(ImageSearchResultsOutputItem)
+	if !ok {
+		return nil, false
+	}
+	return &v, true
+}
+
+func NewOutputItemFromMCPApprovalRequest(v MCPApprovalRequest) OutputItem {
+	return OutputItem{value: v}
+}
+func (o OutputItem) AsMCPApprovalRequest() (*MCPApprovalRequest, bool) {
+	v, ok := o.value.(MCPApprovalRequest)
+	if !ok {
+		return nil, false
+	}
+	return &v, true
+}
+
+func NewStreamEventFromImageSearchQueries(v ImageSearchQueriesEvent) StreamEvent {
+	return StreamEvent{value: v}
+}
+func (e StreamEvent) AsImageSearchQueries() (*ImageSearchQueriesEvent, bool) {
+	v, ok := e.value.(ImageSearchQueriesEvent)
+	if !ok {
+		return nil, false
+	}
+	return &v, true
+}
+
+func NewStreamEventFromImageSearchResults(v ImageSearchResultsEvent) StreamEvent {
+	return StreamEvent{value: v}
+}
+func (e StreamEvent) AsImageSearchResults() (*ImageSearchResultsEvent, bool) {
+	v, ok := e.value.(ImageSearchResultsEvent)
+	if !ok {
+		return nil, false
+	}
+	return &v, true
 }
