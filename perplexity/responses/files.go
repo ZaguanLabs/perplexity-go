@@ -33,7 +33,7 @@ func (s *FilesService) ListRaw(ctx context.Context, responseID string, opts ...a
 }
 
 func (s *FilesService) listWithResponse(ctx context.Context, responseID string, opts ...api.RequestOption) (*ResponseFileList, *internalhttp.Response, error) {
-	if responseID == "" {
+	if responseID == "" || responseID == "." || responseID == ".." {
 		return nil, nil, fmt.Errorf("responseID is required")
 	}
 	req := &internalhttp.Request{Method: http.MethodGet, Path: "/v1/responses/" + url.PathEscape(responseID) + "/files", Options: api.ApplyRequestOptions(opts)}
@@ -57,10 +57,10 @@ func (s *FilesService) Content(ctx context.Context, responseID, fileID string, o
 }
 
 func (s *FilesService) ContentRaw(ctx context.Context, responseID, fileID string, opts ...api.RequestOption) (*api.RawResponse[[]byte], error) {
-	if responseID == "" {
+	if responseID == "" || responseID == "." || responseID == ".." {
 		return nil, fmt.Errorf("responseID is required")
 	}
-	if fileID == "" {
+	if fileID == "" || fileID == "." || fileID == ".." {
 		return nil, fmt.Errorf("fileID is required")
 	}
 	allOptions := append([]api.RequestOption{api.WithHeader("Accept", "application/octet-stream")}, opts...)

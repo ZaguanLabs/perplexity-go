@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.9.0] - 2026-10-25
+
+- Target Python SDK 0.46.1: models, decisions, batches, files, managed skills and revisions.
+- Add multipart uploads from readers, file handles and paths, with replayable retry bodies.
+- Add Responses effort, prompt caching, service tiers, step-budget controls and extraction token/cost usage.
+- Add validated typed stream reconnection cursors and preserve base-URL queries.
+
 ## [1.8.0] - 2026-10-13
 
 - Align with official Python SDK 0.43.8: image-search tools, results and streaming events; file input parts; Responses tool-choice selection.

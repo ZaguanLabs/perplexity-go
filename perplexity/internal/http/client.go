@@ -75,6 +75,7 @@ type Request struct {
 	Headers map[string]string
 	Query   map[string]any
 	Body    interface{}
+	RawBody []byte
 	Options api.RequestOptions
 }
 
@@ -147,7 +148,9 @@ func (c *Client) doRequest(ctx context.Context, req *Request) (*Response, error)
 	}
 
 	var bodyReader io.Reader
-	if req.Body != nil {
+	if req.RawBody != nil {
+		bodyReader = bytes.NewReader(req.RawBody)
+	} else if req.Body != nil {
 		body, err := mergeExtraBody(req.Body, req.Options.ExtraBody)
 		if err != nil {
 			return nil, err
@@ -442,9 +445,28 @@ func (c *Client) DoStream(ctx context.Context, req *Request) (*StreamResponse, e
 }
 
 func (c *Client) buildURL(req *Request) (string, error) {
-	requestURL, err := url.Parse(c.baseURL + req.Path)
+	requestURL, err := url.Parse(c.baseURL)
 	if err != nil {
 		return "", fmt.Errorf("failed to build request URL: %w", err)
+	}
+	relative, err := url.Parse(req.Path)
+	if err != nil {
+		return "", fmt.Errorf("failed to parse request path: %w", err)
+	}
+	if relative.IsAbs() {
+		requestURL = relative
+	} else {
+		escaped := strings.TrimRight(requestURL.EscapedPath(), "/") + "/" + strings.TrimLeft(relative.EscapedPath(), "/")
+		requestURL.Path, err = url.PathUnescape(escaped)
+		if err != nil {
+			return "", err
+		}
+		requestURL.RawPath = escaped
+		baseQuery := requestURL.Query()
+		for key, values := range relative.Query() {
+			baseQuery[key] = values
+		}
+		requestURL.RawQuery = baseQuery.Encode()
 	}
 	values := requestURL.Query()
 	addQueryValues(values, c.defaultQuery)

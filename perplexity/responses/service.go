@@ -116,7 +116,7 @@ func (s *Service) RetrieveRaw(ctx context.Context, responseID string, opts ...ap
 }
 
 func (s *Service) retrieveWithResponse(ctx context.Context, responseID string, opts ...api.RequestOption) (*RetrieveResponse, *internalhttp.Response, error) {
-	if responseID == "" {
+	if responseID == "" || responseID == "." || responseID == ".." {
 		return nil, nil, fmt.Errorf("responseID is required")
 	}
 
@@ -155,7 +155,7 @@ func (s *Service) CancelRaw(ctx context.Context, responseID string, opts ...api.
 }
 
 func (s *Service) cancelWithResponse(ctx context.Context, responseID string, opts ...api.RequestOption) (*CancelResponse, *internalhttp.Response, error) {
-	if responseID == "" {
+	if responseID == "" || responseID == "." || responseID == ".." {
 		return nil, nil, fmt.Errorf("responseID is required")
 	}
 	req := &internalhttp.Request{

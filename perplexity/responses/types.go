@@ -217,7 +217,7 @@ func (c *InputMessageContent) UnmarshalJSON(data []byte) error {
 type InputMessage struct {
 	Content InputMessageContent `json:"content"`
 	Role    InputMessageRole    `json:"role"`
-	Type    InputMessageType    `json:"type"`
+	Type    InputMessageType    `json:"type,omitempty"`
 }
 
 type FunctionCallOutputInput struct {
@@ -286,6 +286,7 @@ func (i InputItem) MarshalJSON() ([]byte, error) {
 
 func (i *InputItem) UnmarshalJSON(data []byte) error {
 	variant, err := unmarshalByTypeField(data, map[string]func() any{
+		"":                                       func() any { return &InputMessage{} },
 		string(InputItemTypeMCPListTools):        func() any { return &MCPListToolsInput{} },
 		string(InputItemTypeMCPCall):             func() any { return &MCPCallOutputItem{} },
 		string(InputItemTypeMCPApprovalRequest):  func() any { return &MCPApprovalRequest{} },
@@ -633,6 +634,10 @@ type ResponseFormat struct {
 }
 
 type CreateParams struct {
+	Effort             *string           `json:"effort,omitempty"`
+	PromptCacheKey     *string           `json:"prompt_cache_key,omitempty"`
+	ServiceTier        *string           `json:"service_tier,omitempty"`
+	StepBudgetReminder *bool             `json:"step_budget_reminder,omitempty"`
 	ToolChoice         any               `json:"tool_choice,omitempty"`
 	Input              Input             `json:"input"`
 	Background         *bool             `json:"background,omitempty"`
@@ -672,12 +677,15 @@ type Cost struct {
 }
 
 type InputTokensDetails struct {
+	CachedTokens             int  `json:"cached_tokens"`
 	CacheCreationInputTokens *int `json:"cache_creation_input_tokens,omitempty"`
 	CacheReadInputTokens     *int `json:"cache_read_input_tokens,omitempty"`
 }
 
 type ToolCallsDetails struct {
-	Invocation *int `json:"invocation,omitempty"`
+	CostUSD    *float64             `json:"cost_usd,omitempty"`
+	TokenUsage []ToolCallTokenUsage `json:"token_usage,omitempty"`
+	Invocation *int                 `json:"invocation,omitempty"`
 }
 
 type Usage struct {
@@ -1125,6 +1133,10 @@ func (o OutputItem) AsUnknown() (*UnknownOutputItem, bool) {
 }
 
 type CreateResponse struct {
+	Effort             *string      `json:"effort,omitempty"`
+	Preset             *string      `json:"preset,omitempty"`
+	PromptCacheKey     *string      `json:"prompt_cache_key,omitempty"`
+	ServiceTier        *string      `json:"service_tier,omitempty"`
 	ToolChoice         any          `json:"tool_choice,omitempty"`
 	ID                 string       `json:"id"`
 	CreatedAt          int64        `json:"created_at"`
@@ -1803,4 +1815,15 @@ func (e StreamEvent) AsImageSearchResults() (*ImageSearchResultsEvent, bool) {
 		return nil, false
 	}
 	return &v, true
+}
+
+type OutputTokensDetails struct {
+	ReasoningTokens int `json:"reasoning_tokens"`
+}
+type ToolCallTokenUsage struct {
+	InputTokens         int                 `json:"input_tokens"`
+	InputTokensDetails  InputTokensDetails  `json:"input_tokens_details"`
+	Model               *string             `json:"model,omitempty"`
+	OutputTokens        int                 `json:"output_tokens"`
+	OutputTokensDetails OutputTokensDetails `json:"output_tokens_details"`
 }

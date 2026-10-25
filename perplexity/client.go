@@ -2,6 +2,12 @@ package perplexity
 
 import (
 	"errors"
+	"github.com/ZaguanLabs/perplexity-go/perplexity/batches"
+	"github.com/ZaguanLabs/perplexity-go/perplexity/decisions"
+	"github.com/ZaguanLabs/perplexity-go/perplexity/files"
+	"github.com/ZaguanLabs/perplexity-go/perplexity/models"
+	"github.com/ZaguanLabs/perplexity-go/perplexity/skills"
+
 	"fmt"
 	"net/http"
 	"os"
@@ -51,6 +57,12 @@ type Client struct {
 	userAgent      string
 
 	// Services
+	Batches   *batches.Service
+	Decisions *decisions.Service
+	Files     *files.Service
+	Models    *models.Service
+	Skills    *skills.Service
+
 	Chat                     *chat.Service
 	Search                   *search.Service
 	AsyncChat                *asyncchat.Service
@@ -111,6 +123,11 @@ func (c *Client) initServices() {
 	)
 	httpClientWrapper.SetDefaultQuery(c.defaultQuery)
 
+	c.Batches = batches.NewService(httpClientWrapper)
+	c.Decisions = decisions.NewService(httpClientWrapper)
+	c.Files = files.NewService(httpClientWrapper)
+	c.Models = models.NewService(httpClientWrapper)
+	c.Skills = skills.NewService(httpClientWrapper)
 	c.Chat = chat.NewService(httpClientWrapper)
 	c.Search = search.NewService(httpClientWrapper)
 	c.AsyncChat = asyncchat.NewService(httpClientWrapper)
