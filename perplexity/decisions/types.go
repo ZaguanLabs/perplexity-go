@@ -39,9 +39,13 @@ type DecisionScoreQuestion struct {
 	Instructions any    `json:"instructions,omitempty"`
 	Type         string `json:"type"`
 }
+type DecisionToolCallDetails struct {
+	Invocation int `json:"invocation"`
+}
 type DecisionUsage struct {
-	InputTokens  int `json:"input_tokens"`
-	OutputTokens int `json:"output_tokens"`
+	ToolCallsDetails map[string]DecisionToolCallDetails `json:"tool_calls_details,omitempty"`
+	InputTokens      int                                `json:"input_tokens"`
+	OutputTokens     int                                `json:"output_tokens"`
 }
 type DecisionsRequest struct {
 	Model     string                      `json:"model"`

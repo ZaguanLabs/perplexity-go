@@ -374,6 +374,8 @@ type Reasoning struct {
 	Effort *ReasoningEffort `json:"effort,omitempty"`
 }
 
+const BuiltinSkillSearch = "search"
+
 type BuiltinSkill struct {
 	Name string    `json:"name"`
 	Type SkillType `json:"type"`

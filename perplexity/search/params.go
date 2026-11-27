@@ -2,6 +2,7 @@ package search
 
 import (
 	"encoding/json"
+	"time"
 
 	"github.com/ZaguanLabs/perplexity-go/perplexity/chat"
 )
@@ -43,7 +44,8 @@ func (q *Query) UnmarshalJSON(data []byte) error {
 
 // SearchParams contains parameters for creating a search request.
 type SearchParams struct {
-	Query Query `json:"query"`
+	Query        Query      `json:"query"`
+	SnapshotAsOf *time.Time `json:"snapshot_as_of,omitempty"`
 
 	// Country for search localization (optional).
 	Country *string `json:"country,omitempty"`

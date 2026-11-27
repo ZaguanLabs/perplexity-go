@@ -6,7 +6,7 @@
 
 An **unofficial**, community-maintained Go client library for the [Perplexity API](https://docs.perplexity.ai/). This SDK provides idiomatic Go interfaces for chat completions, streaming responses, and web search.
 
-**Current parity target:** official Perplexity Python SDK `0.46.1` (Go SDK `1.9.0`).
+**Current parity target:** official Perplexity Python SDK `0.50.0` (Go SDK `1.10.0`).
 
 > ⚠️ **Disclaimer**: This is an unofficial SDK and is not affiliated with, endorsed by, or supported by Perplexity AI. For official support, please refer to the [Perplexity API documentation](https://docs.perplexity.ai/).
 
@@ -28,6 +28,7 @@ An **unofficial**, community-maintained Go client library for the [Perplexity AP
 - **Async Chat Completions**: Submit, list, and retrieve asynchronous chat completion requests
 - **Streaming Responses**: Real-time streaming with Server-Sent Events (SSE)
 - **Web Search**: Advanced search with filtering, multiple queries, and specialized modes
+- **Web context and monitors**: Fetch URL content and highlights, pin searches to a timestamp, schedule monitors, inspect runs and test webhooks.
 - **Tool Calling**: Function calling and tool integration
 - **Reasoning Traces**: Access to model reasoning steps
 

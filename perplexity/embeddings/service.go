@@ -49,7 +49,7 @@ func (s *Service) createWithResponse(ctx context.Context, params *CreateParams, 
 		if *params.Input.Text == "" {
 			return nil, nil, fmt.Errorf("input cannot be empty")
 		}
-	} else {
+	} else if params.Input.Texts != nil || (params.Input.Documents == nil && params.Input.Images == nil) {
 		if len(params.Input.Texts) == 0 {
 			return nil, nil, fmt.Errorf("input cannot be empty")
 		}

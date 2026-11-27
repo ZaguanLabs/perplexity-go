@@ -2,24 +2,25 @@ package perplexity
 
 import (
 	"errors"
-	"github.com/ZaguanLabs/perplexity-go/perplexity/batches"
-	"github.com/ZaguanLabs/perplexity-go/perplexity/decisions"
-	"github.com/ZaguanLabs/perplexity-go/perplexity/files"
-	"github.com/ZaguanLabs/perplexity-go/perplexity/models"
-	"github.com/ZaguanLabs/perplexity-go/perplexity/skills"
-
 	"fmt"
 	"net/http"
 	"os"
 
 	"github.com/ZaguanLabs/perplexity-go/perplexity/asyncchat"
+	"github.com/ZaguanLabs/perplexity-go/perplexity/batches"
 	"github.com/ZaguanLabs/perplexity-go/perplexity/browser"
 	"github.com/ZaguanLabs/perplexity-go/perplexity/chat"
 	"github.com/ZaguanLabs/perplexity-go/perplexity/contextualizedembeddings"
+	"github.com/ZaguanLabs/perplexity-go/perplexity/decisions"
 	"github.com/ZaguanLabs/perplexity-go/perplexity/embeddings"
+	"github.com/ZaguanLabs/perplexity-go/perplexity/files"
 	internalhttp "github.com/ZaguanLabs/perplexity-go/perplexity/internal/http"
+	"github.com/ZaguanLabs/perplexity-go/perplexity/models"
+	"github.com/ZaguanLabs/perplexity-go/perplexity/monitors"
 	"github.com/ZaguanLabs/perplexity-go/perplexity/responses"
 	"github.com/ZaguanLabs/perplexity-go/perplexity/search"
+	"github.com/ZaguanLabs/perplexity-go/perplexity/skills"
+	"github.com/ZaguanLabs/perplexity-go/perplexity/webcontext"
 )
 
 func clientErrorFactory(kind internalhttp.ErrorKind, statusCode int, message string, body []byte, requestID string, cause error) error {
@@ -57,6 +58,8 @@ type Client struct {
 	userAgent      string
 
 	// Services
+	Context   *webcontext.Service
+	Monitors  *monitors.Service
 	Batches   *batches.Service
 	Decisions *decisions.Service
 	Files     *files.Service
@@ -123,6 +126,8 @@ func (c *Client) initServices() {
 	)
 	httpClientWrapper.SetDefaultQuery(c.defaultQuery)
 
+	c.Context = webcontext.NewService(httpClientWrapper)
+	c.Monitors = monitors.NewService(httpClientWrapper)
 	c.Batches = batches.NewService(httpClientWrapper)
 	c.Decisions = decisions.NewService(httpClientWrapper)
 	c.Files = files.NewService(httpClientWrapper)

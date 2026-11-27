@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.10.0] - 2026-11-27
+
+- Add Context retrieval and monitor lifecycle, run history and webhook testing.
+- Add point-in-time Search and Context requests and the built-in search skill.
+- Support v2 embeddings with document and image inputs, chunk counts, input types and nested results.
+- Decode per-tool invocation counts in Decisions usage.
+
 ## [1.9.0] - 2026-10-25
 
 - Target Python SDK 0.46.1: models, decisions, batches, files, managed skills and revisions.
